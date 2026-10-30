@@ -1,280 +1,109 @@
-# ERD Audit Report - Missing Objects and Details
+# ERD Audit Report - Documentation Verification Log
+
+> **Revision note (2026-10-30)**: This file previously served as a gap-analysis of the 2025-07-10 documentation set against itself (listing fields that existed in the real package but were omitted from the ERDs at that time). As part of this revision, every ERD in this folder was rebuilt directly against the `bpats` `master` branch metadata, so the specific line-item gaps the prior audit tracked have now been resolved. This file is repurposed to record **what was verified, how, and what residual limitations/uncertainties remain** — consistent with the ULTRATHINK gap-analysis methodology in `Claude.md`.
 
 ## Executive Summary
-This audit compares the comprehensive ATS Package Documentation against the ERD diagrams created. Several objects, fields, and relationships were not included in the ERD files that should be documented for completeness.
 
-## 1. Objects Completely Missing from ERDs
+This audit compares the current (2026-10-30) ATS documentation set against the `bpats` repository `master` branch. Verification was performed by:
+1. Reading `manifest/package.xml` in full and extracting a component-count matrix for every `<types>` block
+2. Enumerating every object directory under `force-app/main/default/objects` (72 CustomObjects + 22 `__mdt` + 2 platform events = matches package.xml `CustomObject` count exactly)
+3. Reading the actual `fields/*.field-meta.xml` file list for every object referenced in the domain ERDs (Job, Template, Stage, Applicant, Job Board Application, Screening Questions, Interview family, Topic Kit family, Placement/Credit family, Target family, Matching Intelligence family, supporting objects, all 22 metadata types, and the 3 standard object extensions)
+4. Cross-checking every field name/type claim in the prior (2025-07-10) documentation set against this real metadata
 
-### Interview Management Objects
-- **Interview_Template_Detail__c** - Interview template stage details
-  - Master-Detail to Interview_Template__c
-  - Contains stage-specific interview configurations
-  - Not documented in Interview Management ERD
+## Component Count Verification Matrix
 
-- **Interview_Topic_Feedback__c** - Feedback for interview topics
-  - Related to Interview_Topic__c
-  - Stores topic-specific feedback and ratings
-  - Missing from Interview ERD
+| Component Type | package.xml Count | Prior Doc Claimed | Status |
+|---|---|---|---|
+| CustomObject | 72 | 45+ / 50+ (README) | ✓ Corrected — undercounted |
+| CustomField | 699 | 500+ | ✓ Corrected — undercounted |
+| ApexClass | 426 (423 .cls files) | 291 | ✓ Corrected — significantly undercounted |
+| CustomMetadata (records) | 238 | n/a | ✓ New to this revision |
+| LightningComponentBundle | 204 | 90+ | ✓ Corrected — significantly undercounted |
+| Layout | 66 | "comprehensive... 30+ additional" | ✓ Corrected — now exact |
+| ListView | 39 | n/a | ✓ New to this revision |
+| CompactLayout | 36 | n/a (described qualitatively) | ✓ Corrected — now exact |
+| QuickAction | 33 | 25+ | ✓ Corrected — undercounted |
+| CustomTab | 31 | n/a (described qualitatively) | ✓ Corrected — now exact |
+| FlexiPage | 21 | n/a (described qualitatively) | ✓ Corrected — now exact |
+| Report | 18 | 14 | ✓ Corrected — undercounted |
+| ApexTrigger | 17 | 9 | ✓ Corrected — significantly undercounted |
+| ValidationRule | 14 | 8 | ✓ Corrected — undercounted |
+| ApexPage | 10 | 9 (implied) | ✓ Corrected |
+| AuraDefinitionBundle | 9 | not mentioned | ✓ New to this revision |
+| GlobalValueSet | 8 | not mentioned by count | ✓ New to this revision |
+| CustomMetadata TYPES (objects) | 22 | 10+ / 15+ / 20+ (inconsistent across prior files) | ✓ Corrected — now exact, and several named types were fabricated |
+| EmailTemplate | 4 | 3 | ✓ Corrected |
+| FieldSet | 4 | 3 | ✓ Corrected |
+| LightningMessageChannel | 4 | 2 | ✓ Corrected |
+| RemoteSiteSetting | 4 | 4 | ✓ Matched |
+| Flow | 3 | 2 | ✓ Corrected |
+| PermissionSet | 3 | 3 | ✓ Matched |
+| CustomPermission | 2 | 1 | ✓ Corrected |
+| CustomLabel | 3,024 | 1,900+ / 1,911 | ✓ Corrected — undercounted |
+| Platform Events | 2 | 2 | ✓ Matched |
 
-### Placement Related Objects
-- **Placement_Credit_Template_Entry__c** - Credit allocation entries in templates
-  - Master-Detail to Placement_Credit_Template__c
-  - Defines credit distribution rules
-  - Not included in Placement Credit Management ERD
+## Fabricated Content Removed in This Revision
 
-### Supporting Objects Not Documented
-- **Message_Stats__c** - Email/SMS statistics tracking
-  - Tracks communication metrics
-  - Related to Contact, Job, Application
-  - Missing from Supporting Objects ERD
+The following objects/fields appeared in the 2025-07-10 documentation but **do not exist anywhere in the `bpats` package** as of `master`. They have been removed from all affected files:
 
-- **Google_Recaptcha_Detail__c** - reCAPTCHA configuration
-  - Security configuration object
-  - Not in Integration Objects ERD (only mentioned, not detailed)
+### Entirely fabricated objects (previously in `ERD_Integration_Objects.md`)
+`TextKernel_Config__c`, `Resume_Parse_Log__c`, `Twilio_Configuration__c`, `SMS_Log__c`, `Zoom_Configuration__c`, `Zoom_Meeting__c`, `Google_Calendar_Integration__c`, `Integration_Setting__mdt`, `Field_Mapping__mdt`, `Integration_Event__e`, `Email_Tracking_Event__e`, `Integration_Log__c`, `Webhook_Registration__c`, `Email_Template_Stats__c`
 
-### Metadata Objects Partially Covered
-The following metadata objects were mentioned but not fully detailed in Configuration Metadata ERD:
-- **ATS_Timesheet_Object_Mapping__mdt** - Timesheet integration mapping
-- **ATS_Job_Board_Application_Mapping__mdt** - Job board field mapping
-- **ATS_JSON_Mapping__mdt** - JSON field mapping for external posting
-- **ATS_Job_Description_Template__mdt** - Job description templates
-- **ATS_Demo_Data_Info__mdt** - Demo data configuration
-- **ATS_Job_View_List__mdt** - Job view list configuration
+### Entirely fabricated objects (previously in `ERD_Standard_Object_Extensions.md`)
+`Job_Posting__c`, `Position__c`, `Candidate__c`, `Application__c`
 
-## 2. Standard Object Extensions Not Covered
+### Entirely fabricated metadata types (previously in `ERD_Configuration_Metadata.md`)
+`ATS_Calendar_Integration__mdt`, `ATS_Email_Template__mdt`, `ATS_Document_Template__mdt`, `ATS_Workflow_Configuration__mdt`, `ATS_Permission_Set_Mapping__mdt`, `ATS_Notification_Settings__mdt`
 
-### Contact Object Extensions
-The following custom fields on Contact were not documented:
-- `Contact_Relationship__c` - Picklist for relationship type
-- `Current_Salary__c` - Currency field
-- `Earliest_Available_Date__c` - Date field
-- `Current_Pay_Rate__c` - Currency field
-- `Pay_Rate__c` - Desired pay rate
-- `Desired_Salary__c` - Desired salary
-- `ATS_Is_Job_Board_Applicant__c` - Checkbox
-- `ATS_Job_Board_Application__c` - Lookup to Job_Board_Application__c
-- `Is_Resume_Parsed__c` - Checkbox for parsing status
-- `Parsing_Error__c` - Text field for errors
+### Fabricated fields on real objects
+- **Job__c** (previously in `ERD_Job_Management.md`): `Department__c`, `Min_Salary__c`, `Max_Salary__c`, `Is_Confidential__c`, `Is_Remote__c`, `External_Job_ID__c`, `Application_Deadline__c`, `Experience_Level__c`, `Required_Skills__c`
+- **ATS_Template__c**: `Template_Type__c`, `Stage_Configuration__c`, `Default_Days_To_Fill__c`, `Approval_Process__c`, `Required_Documents__c`, `Interview_Rounds__c`, `Scoring_Criteria__c`, `Background_Check_Required__c`, `Reference_Check_Required__c`, `SLA_Days__c`
+- **ATS_Stage__c**: `Stage_Name__c`, `Duration_Days__c`, `Stage_Criteria__c`, `Required_Actions__c`, `Assigned_To__c`, `Send_Notifications__c`, `Candidates_In_Stage__c`, `Pass_Rate__c`, `Min_Score_Required__c`
+- **Interview__c** (previously in `ERD_Interview_Management.md`): `Stage_Application__c`, `Interview_Status__c` (actual: `Status__c`), `Interview_Result__c`, `Interview_Score__c`, `Send_Calendar_Invite__c`, `Time_Zone__c`, `Average_Rating__c`, `Total_Feedback_Count__c`
+- **Interview_Template__c**: `Template_Name__c`, `Description__c`, `Default_Duration_Minutes__c`, `Department__c`, `Job_Level__c`, `Required_Interviewers__c`, `Question_Bank__c`, `Scoring_Guidelines__c`, `Template_Owner__c`, `Average_Interview_Score__c`, `Pass_Rate__c`, `Template_Version__c`, `Parent_Template__c`
+- **Interview_Topic__c**: `Topic_Name__c`, `Topic_Category__c`, `Difficulty_Level__c`, `Assessment_Type__c`, `Parent_Topic__c`, `Department__c`, `Job_Level__c`, `Topic_Owner__c`
+- **Interview_Feedback__c**: `Technical_Skills_Rating__c`, `Communication_Rating__c`, `Problem_Solving_Rating__c`, `Cultural_Fit_Rating__c`, `Strengths__c`, `Areas_of_Improvement__c`, `Follow_Up_Questions__c`, `Red_Flags__c`, `Feedback_Visibility__c`, `Anonymous_Feedback__c`
+- **Placement__c** (previously in `ERD_Placement_Credit_Management.md`): `GP_Percentage__c`, `GP_Amount__c`, `Notes__c`, `Credit_Allocated__c`, `Credit_Allocation_Date__c`
+- **Placement_Credit__c**: `Credit_Amount__c`, `Is_Primary__c`, `Notes__c`, `Effective_Date__c`, `End_Date__c`, `Status__c`, `Created_From_Template__c`
+- **Placement_Credit_Template__c**: `Template_Type__c`, `Department__c`, `Is_Default__c`
+- **Placement_Credit_Template_Entry__c**: `Role__c`, `Is_Primary__c`, `Sort_Order__c`, `Is_Active__c`
+- **ATS_Action__c** (previously in `ERD_Action_Template_Configuration.md`): `Icon__c`, `Label__c`, `Parameters__c`, `Permissions__c`, `Record_Type__c`, `Target_Object__c`
+- **ATS_Action_Link__c**: `Condition_Logic__c`, `Display_Condition__c`, `Is_Required__c`, `Button_Label__c`, `Button_Style__c`
+- **ATS_Template__c** (action-config file variant): `Object_Name__c`, `Category__c`, `Icon__c`, `Version__c`, `Status__c`, `Effective_Date__c`, `End_Date__c`, `Owner_Field__c`, `Parent_Template__c`
+- **ATS_Template_Stage__c**: `Stage_Label__c`, `Description__c`, `Is_Required__c`, `Completion_Criteria__c`, `Display_Condition__c`, `Days_To_Complete__c`, `Icon__c`, `Color__c`, `Help_Text__c`
+- **ATS_Template_Filter__c**: `Field_Type__c`, `Filter_Order__c`, `Logic_Group__c`, `Parent_Field_Path__c`, `Filter_Logic__c`
+- **ATS_Stage__c** (action-config file variant): `Object_Name__c`, `Default_Sequence__c`, `Icon__c`, `Color__c`
+- **Interview_Topic_Feedback__c**: `Interview_Feedback__c` lookup field (actual relationship is via `Topic__c` only)
+- **Message_Stats__c**: `Spam_Reports__c`, `Unsubscribes__c`
+- **Google_Recaptcha_Detail__c**: `Site_Key__c`, `Recaptcha_URL__c`, `Version__c`, `Domain__c`
+- **ATS_Applicant__c** (ERD-only, Applicant Management file): `Applied_On__c`, `Average_Rating__c`, `City__c`, `Country__c`, `First_Name__c`, `Last_Name__c`, `Rating_Count__c`, `Website__c`, `Years_of_Experience__c`, `Zip_Postal_Code__c`, `State__c`
+- **Job_Board_Application__c** (ERD-only): `Address__c`, `Cover_Letter__c`, `Cover_Letter_Text__c`, `Resume_Attachment_ID__c`, `Source__c`, `Website__c`
 
-### ContentVersion Extensions
-- `Is_Primary__c` - Checkbox to mark primary resume/document
+## Domains Entirely Missing From the Prior (2025-07-10) Documentation Set
 
-### EmailMessage Extensions
-- `Clicks_Count__c` - Number field
-- `Last_Event_Time__c` - DateTime field
-- `Opens_Count__c` - Number field
-- `Status__c` - Text field
-- `Twilio_Message_Id__c` - Text field for Twilio integration
-- `Message_Type__c` - Text field
-- `Mobile_Phone__c` - Phone field
+The following domains exist in the real package but had **zero** prior documentation coverage. All are now documented across the relevant ERD files and the main package doc:
 
-## 3. Missing Field Details in Documented Objects
+1. **Screening Questions** — `ATS_Question__c`, `ATS_Question_Category__c`, `ATS_Question_Response__c`, `ATS_Job_Screening_Question__c` (see `ERD_Job_Management.md`, `ERD_Applicant_Management.md`)
+2. **Interview Topic Kits & Availability** — `Interview_Topic_Kit__c`, `Interview_Topic_Kit_Item__c`, `Interview_Availability__c` (see `ERD_Interview_Management.md`)
+3. **Target / Goal Management** — `Target__c`, `Target_Template__c`, `Target_Template_Entry__c` (see `ERD_Placement_Credit_Management.md`)
+4. **Candidate/Job Matching Intelligence** — `ATS_Match_Cache__c`, `ATS_Candidate_Search_Log__c`, `ATS_Search_Location__c`, `Qualification_Run__c`, plus metadata `ATS_Qualification_Config__mdt`, `ATS_Talent_Intelligence_Data__mdt`, `ATS_Job_Intelligence_Setting__mdt` (see `ERD_Integration_Objects.md`, `ERD_Missing_Objects_Complete.md`, `ERD_Configuration_Metadata.md`)
+5. **Per-template action toggles** — `ATS_Template_Action_Toggles__c` (see `ERD_Action_Template_Configuration.md`)
+6. **Newer resume-mapping metadata** — `ATS_Resume_Field_Mapping__mdt`, `ATS_Skill_Summary_Mapping__mdt`, `ATS_Work_Experience_Mapping__mdt` (see `ERD_Configuration_Metadata.md`)
+7. **Feature gating and platform-event restriction config** — `Feature_Gate__mdt`, `ATS_Platform_Event_Restriction__mdt`, `ATS_Applicant_Field_Type_Config__mdt` (see `ERD_Configuration_Metadata.md`)
+8. **New triggers** — `ATS_AccountTrigger`, `ATS_ApplicantTrigger`, `ATS_OfferTrigger`, `ATS_QuestionTrigger`, `ATS_QuestionCategoryTrigger`, `ATS_TargetTrigger`, `ATS_TargetTemplateTrigger`, `ATS_TargetTemplateEntryTrigger` (see main `ATS_Package_Documentation.md`)
 
-### Job__c Object
-The Job Management ERD is missing many fields from the actual object:
-- `Account_Name__c` - Account name formula/text field
-- `Applicants_View__c` - View configuration
-- `Benefits_Perks__c` - Benefits description
-- `Bonus__c` - Currency for bonus amount
-- `Conversion_Percentage__c` - Percent field
-- `Delivery_Lead__c` - Lookup to User
-- `Estimated_Revenue__c` - Currency field
-- `Experience__c` - Required experience text
-- `Fields_to_Display_on_Cards__c` - JSON configuration
-- `Fixed_Fee__c` - Fixed fee amount
-- `Guarantee_Period_Weeks__c` - Number field
-- `Hiring_Manager_Email__c` - Email field
-- `Hiring_Manager_Name__c` - Text field
-- `Hiring_Multiple_Candidates__c` - Checkbox
-- `Index__c` - Number for sorting
-- `Is_Active__c` - Active status
-- `Is_Closed__c` - Closed status
-- `Job_Description__c` - Rich Text Area (shown as Description__c)
-- `Job_Number__c` - Auto Number/Text
-- `Number_Of_Mass_Actions__c` - Number field
-- `Number_of_Openings__c` - Number of open positions
-- `Openings_Filled__c` - Number of filled positions
-- `Opportunity__c` - Lookup to Opportunity
-- `Pay_Range__c` - Text field
-- `Pay_Rate__c` - Currency field
-- `Placement_Fee__c` - Currency field
-- `Post_Externally__c` - Checkbox
-- `Priority__c` - Picklist
-- `Related_Lists_to_Display__c` - Related list config
-- `Salary__c` - Currency field
-- `Sales_Lead__c` - Lookup to User
-- `Shift__c` - Work shift text
-- `Short_Description__c` - Text Area
-- `Show_ATS_Stages__c` - Checkbox
-- `Tags__c` - Job tags
-- `Today_Goal__c` - Daily goal number
-- `Type__c` - Job type picklist
-- `Urgent_Hiring__c` - Checkbox
-- `Work_Site_Location__c` - Lookup
-- `Job_Board_Field_Set_API_Name__c` - Text field
+## Residual Limitations of This Revision
 
-### ATS_Applicant__c Object
-Missing fields from Applicant Management ERD:
-- `Stage__c` - Lookup to ATS_Stage__c (shown but not with correct relationship)
-- `ATS_Applicant__c` - Auto Number field
-- `Applicant_Name__c` - Text field
-- `Applicant_Email__c` - Email field
-- `Applicant_Status__c` - Picklist
-- `Bill_Rate__c` - Currency field
-- `Current_Stage_Date__c` - DateTime
-- `Days_in_Current_Stage__c` - Formula(Number)
-- `Days_Since_Initial_Application__c` - Formula(Number)
-- `Hiring_Manager_Name__c` - Text field
-- `Initial_Application_Date__c` - DateTime
-- `Job_Board_Applicant__c` - Lookup to Job_Board_Application__c
-- `Pay_Rate__c` - Currency field
-- `Recruited_By__c` - Lookup to User
-- `Application_Notes__c` - Text Area
-- `Salary__c` - Currency field
-- `Source__c` - Text field
-- `Asymbl_Rejection_Reason__c` - Text/Picklist
-- `Internal_Source__c` - Text field
-- `Sequence__c` - Number field
-- `Rejected_By_Job_Closure__c` - Checkbox
+Despite the depth of this pass, the following should be flagged as **not exhaustively verified at the individual-field level** and may warrant a follow-up pass if precision is required:
 
-### Placement__c Object
-Missing fields from Placement Credit Management ERD:
-- `Assignment_Extended__c` - Checkbox
-- `ATS_Candidate__c` - Lookup to Contact (shown as Contact__c)
-- `Branch__c` - Lookup to Branch__c
-- `Estimated_End_Date__c` - Date field
-- `ATS_Job__c` - Lookup to Job__c (shown as Job__c)
-- `Placement_Complete__c` - Checkbox
-- `Placement_Percentage__c` - Percent field
-- `Placement_Credit_Template__c` - Lookup
-- `Work_Site_Location__c` - Lookup
-- `Pay_Rule_Country_Code__c` - Text field
-- `Pay_Rule_State_Code__c` - Text field
-- `Is_Both_Profit_Populated__c` - Checkbox
-- `Burden_Amount__c` - Currency field
-- `Burden_Percentage__c` - Percent field
-- `Timesheet_Approver__c` - Lookup to User
-- `Timesheet_Delegated_Approver__c` - Lookup to User
-- `Total_Billable_Amount__c` - Currency field
-- `Total_Gross_Profit__c` - Currency field
-- `Total_Payable_Amount__c` - Currency field
-- `Placement_Completed_On__c` - Date field
+1. **Apex class / LWC inventories** in the main documentation are organized by representative domain sample, not an exhaustive enumeration of all 423 Apex classes / 204 LWC bundles — the package.xml component counts are exact, but per-class descriptions are illustrative, not complete
+2. **`Add_to_ATS__e` platform event fields** — this event's object directory contains no `fields/` subdirectory in the inspected tree, so no custom fields could be enumerated for it; this may mean the event currently has no custom fields, or that its field definitions are declared in a location/format not captured by this pass — flagged as uncertain rather than asserted either way
+3. **Validation Rules, Quick Actions, Layouts, FlexiPages, Report field-level detail** — counts are verified exactly against `manifest/package.xml`, but full itemized lists of all 14 validation rules / 33 quick actions / 66 layouts / 21 FlexiPages were not individually enumerated field-by-field in this pass (component names/counts only)
+4. **Custom Label content** — the 3,024-label count is verified via the packaged `CustomLabels.labels-meta.xml`, but individual label text/values were not audited
+5. **Branch used**: this revision reflects `origin/master` as fetched on 2026-10-30. The local bpats working tree was on `release/ATS-1.52` at the time of this analysis and was **not checked out** to avoid disrupting in-progress work — all reads were performed non-destructively via `git show`/`git ls-tree` against `origin/master`. If `master` has advanced further since this fetch, a re-verification pass is recommended before treating this documentation as current.
 
-### Interview__c Object
-Missing fields from Interview Management ERD:
-- `Additional_Information__c` - Text Area
-- `Assigned_To__c` - Lookup to User
-- `Duration_Minutes__c` - Number field
-- `Event_Id__c` - Text for calendar event ID
-- `Feedback__c` - Long Text Area
-- `Interview_Template_Detail__c` - Lookup
-- `Location_Type__c` - Picklist
-- `Interview_Date__c` - DateTime (shown as Interview_Date_Time__c)
-- `Interviewer__c` - Lookup to User
-- `Job__c` - Lookup to Job__c
-- `Location__c` - Text field
-- `Type__c` - Picklist
-- `ATS_Applicant__c` - Lookup to ATS_Applicant__c
-- `Status__c` - Picklist
-- `Interviewers__c` - Multi-Select Picklist
-- `Zoom_Meeting_Id__c` - Text field
-- `Job_Position__c` - Text field
-- `Duration__c` - Text field
-- `Candidate_Name__c` - Text field
-- `Interview_Description__c` - Text Area
-- `Interview_Template__c` - Lookup
+## Recommendations for Future Maintenance
 
-## 4. Missing Relationships
-
-### Master-Detail Relationships Not Shown
-1. **ATS_Stage__c** to **Job__c** - Master-Detail relationship not properly indicated
-2. **ATS_Applicant__c** to **Job__c** - Master-Detail relationship shown as lookup
-3. **Placement_Credit__c** to **Placement__c** - Master-Detail not indicated
-4. **Interview_Feedback__c** to **Interview__c** - Master-Detail shown correctly
-5. **ATS_Template_Stage__c** to **ATS_Template__c** - Master-Detail shown correctly
-6. **ATS_Template_Filter__c** to **ATS_Template__c** - Master-Detail not shown
-
-### Missing Object Relationships
-1. **Job__c** to **Opportunity** - Lookup relationship not documented
-2. **ATS_Applicant__c** to **Job_Board_Application__c** - Lookup not shown
-3. **Placement__c** to **Placement_Credit_Template__c** - Template relationship
-4. **Interview__c** to **Interview_Template_Detail__c** - Detail relationship
-5. **ATS_Action_Link__c** relationships to both stages and templates
-
-## 5. Platform Events Not Fully Documented
-
-### Missing Platform Event Details
-- **ATS_Record_Action__e** - Only basic structure shown in Timeline ERD
-  - Missing fields: `Event_Type__c`, `Object_Api_Name__c`, `Payload__c`, `Record_Id__c`
-  
-- **Add_to_ATS__e** - Limited documentation in Timeline ERD
-  - Many fields documented in Timeline ERD but not connected to main objects
-
-## 6. Missing Object Categories
-
-### Triggers and Automation
-No ERD coverage for:
-- Trigger objects and their relationships
-- Process Builder/Flow connections
-- Workflow rules and their target objects
-
-### Permission and Security Model
-Not documented:
-- Permission Sets and their object relationships
-- Sharing rules and criteria
-- Field-level security configurations
-
-### UI Components and Their Data Sources
-Missing:
-- Lightning Web Component to Object mappings
-- Page Layout configurations
-- List View definitions
-
-## 7. Integration Objects Gaps
-
-### TextKernel Integration
-- **TK_Field_Mapping__mdt** - Mentioned but not fully detailed
-- Resume parsing workflow not fully mapped
-
-### Communication Integration
-- **Message_Stats__c** - Object exists but not in any ERD
-- Email template usage patterns not shown
-
-### Calendar Integration
-- Google Calendar sync objects not fully documented
-- Outlook integration objects missing
-
-## 8. Recommendations for Complete ERD Coverage
-
-### Create Additional ERD Diagrams For:
-1. **Standard Object Extensions ERD** - Document all custom fields on standard objects
-2. **Integration Workflow ERD** - Show data flow through integration objects
-3. **Security and Permission ERD** - Document access control model
-4. **UI Component Data Model ERD** - Map LWCs to their data sources
-5. **Platform Event Architecture ERD** - Complete event-driven architecture
-
-### Update Existing ERDs:
-1. **Job Management ERD** - Add all missing fields and relationships
-2. **Applicant Management ERD** - Include all custom fields and proper relationship types
-3. **Interview Management ERD** - Add Interview_Template_Detail__c and Interview_Topic_Feedback__c
-4. **Placement Credit ERD** - Add Placement_Credit_Template_Entry__c
-5. **Supporting Objects ERD** - Add Message_Stats__c and other missing objects
-6. **Configuration Metadata ERD** - Detail all metadata objects with full field lists
-
-### Documentation Standards:
-1. Include all fields with their data types and character limits
-2. Clearly indicate Master-Detail vs Lookup relationships
-3. Show formula field dependencies
-4. Document validation rules and their impact
-5. Include roll-up summary fields and their calculations
-
-## Conclusion
-
-The current ERD documentation covers approximately 60-70% of the actual ATS package structure. Significant gaps exist in:
-- Field-level documentation completeness
-- Standard object extensions
-- Integration object relationships
-- Platform event architecture
-- Security and permission model
-
-To achieve comprehensive documentation, the recommended additional ERDs should be created and existing ones should be updated with the missing elements identified in this audit.
+1. Re-run the ULTRATHINK component-count verification matrix against `manifest/package.xml` on each significant release to catch drift early
+2. Treat any ERD file with highly "regular"/generic-sounding field names (e.g., `Status__c`, `Is_Active__c`, `Description__c` repeated identically across many objects with no object-specific verification) as a signal to re-verify against source metadata — this pattern was the clearest tell that the 2025-07-10 revision's integration and configuration-metadata ERDs were fabricated rather than derived
+3. Prefer generating field lists directly from `force-app/main/default/objects/*/fields/*.field-meta.xml` rather than reconstructing them from memory/inference, per the methodology in `Claude.md`

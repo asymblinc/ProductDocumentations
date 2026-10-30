@@ -1,7 +1,9 @@
 # ATS Package Integration Objects ERD
 
+> **Revision note (2026-10-30)**: This document was **entirely rewritten**. The prior revision was almost completely fabricated: none of `TextKernel_Config__c`, `Resume_Parse_Log__c`, `Twilio_Configuration__c`, `SMS_Log__c`, `Zoom_Configuration__c`, `Zoom_Meeting__c`, `Google_Calendar_Integration__c`, `Integration_Setting__mdt`, `Field_Mapping__mdt`, `Integration_Event__e`, `Email_Tracking_Event__e`, `Integration_Log__c`, `Webhook_Registration__c`, `Email_Template_Stats__c`, or `Application__c` exist anywhere in the `bpats` package. This revision documents the **real** integration-layer objects and metadata verified directly against `force-app/main/default/objects` and `manifest/package.xml` on `master`.
+
 ## Overview
-This document provides a comprehensive Entity Relationship Diagram (ERD) for integration-related objects in the ATS (Applicant Tracking System) package. The diagram focuses on objects that handle external integrations including TextKernel, Twilio, Zoom, Google services, and communication tracking.
+This document provides a comprehensive Entity Relationship Diagram (ERD) for integration-related objects in the ATS (Applicant Tracking System) package. The diagram focuses on objects that handle external integrations including TextKernel (resume parsing), Twilio (email/SMS), Zoom/Google Meet (video interviews), Google services (reCAPTCHA, Calendar), and the newer Talent Intelligence matching service.
 
 ## Complete Integration ERD
 
@@ -9,461 +11,297 @@ This document provides a comprehensive Entity Relationship Diagram (ERD) for int
 erDiagram
     %% Core Objects
     Contact {
-        Id ContactId PK
-        String FirstName
-        String LastName
-        String Email
-        String Phone
-        String MobilePhone
+        Id Id PK
+        Text FirstName
+        Text LastName
+        Boolean Is_Resume_Parsed__c "ATS extension"
+        Text Parsing_Error__c "ATS extension"
+        Text Asymbl_Parsed_Resume__c "ATS extension"
     }
-    
+
     Job__c {
-        Id JobId PK
-        String Name
-        String Status__c
-        Reference Account__c
-        Boolean Active__c
+        Id Id PK
+        Text Job_Title__c
+        Picklist Status__c
+        DateTime Matching_Candidates_Last_Refreshed__c
     }
-    
+
     Interview__c {
-        Id InterviewId PK
-        Reference Contact__c FK
-        Reference Job__c FK
-        DateTime Interview_Date_Time__c
-        String Status__c
-        String Interview_Type__c
-        String Zoom_Meeting_ID__c
-        String Zoom_Join_URL__c
+        Id Id PK
+        Lookup Candidate__c FK
+        Lookup Job__c FK
+        DateTime Interview_Date__c
+        Picklist Status__c
+        Picklist Online_Platforms__c "None/Google Meet/Zoom Meeting"
+        Text Zoom_Meeting_Id__c
+        Text Event_Id__c "Calendar event ID"
     }
-    
-    Application__c {
-        Id ApplicationId PK
-        Reference Contact__c FK
-        Reference Job__c FK
-        String Status__c
-        DateTime Applied_Date__c
+
+    Job_Board_Application__c {
+        Id Id PK
+        Lookup Contact__c FK
+        Lookup Job__c FK
+        Picklist Status__c
     }
-    
+
     %% Communication Tracking Objects
     Message_Stats__c {
-        Id MessageStatsId PK
-        Reference Contact__c FK
-        Reference Job__c FK
-        Reference Application__c FK
-        String Message_Type__c
-        String Message_Subject__c
-        String Message_Body__c
-        String Status__c
-        DateTime Sent_Date__c
-        DateTime Opened_Date__c
-        DateTime Clicked_Date__c
-        Integer Open_Count__c
-        Integer Click_Count__c
-        String Email_Provider__c
-        String SMS_Provider__c
-        String Tracking_ID__c
-        Boolean Is_Bounced__c
-        String Bounce_Reason__c
+        Id Id PK
+        Lookup Parent__c FK "Polymorphic"
+        Number Blocks__c
+        Number Bounces__c
+        Number Clicks__c
+        Date Date__c
+        Number Delivered__c
+        Text External_Key__c
+        Number Opens__c
+        Picklist Stats_Type__c
+        Number Unique_Clicks__c
+        Number Unique_Opens__c
     }
-    
-    Email_Template_Stats__c {
-        Id EmailTemplateStatsId PK
-        Reference Email_Template__c FK
-        Integer Total_Sent__c
-        Integer Total_Opened__c
-        Integer Total_Clicked__c
-        Decimal Open_Rate__c
-        Decimal Click_Rate__c
-        DateTime Last_Used__c
+
+    EmailMessage {
+        Id Id PK
+        Text FromAddress
+        Text Subject
+        Number Clicks_Count__c "ATS extension"
+        Boolean Is_Incoming__c "ATS extension"
+        DateTime Last_Event_Time__c "ATS extension"
+        Text Message_Type__c "ATS extension"
+        Phone Mobile_Phone__c "ATS extension"
+        Text Status__c "ATS extension"
+        Text Twilio_External_Message_Id__c "ATS extension"
     }
-    
+
     %% Google Integration Objects
     Google_Recaptcha_Detail__c {
-        Id RecaptchaId PK
-        String Site_Key__c
-        String Secret_Key__c
+        Id Id PK
+        Text Client_Id__c
+        Text Key__c
+    }
+
+    %% Custom Metadata - Integration Configuration
+    ATS_Integration_Settings__mdt {
+        Text Account_Name__c
+        Text Encryption_Key__c
+        Text Endpoint_URL__c
+        Text Password__c
+        Text Username__c
+    }
+
+    ATS_Email_Integration__mdt {
+        Text API_key__c
+        Boolean Create_Activity_Record__c
+        DateTime Email_Activity_Last_Job_Run_Time__c
+        Text Encryption_Key__c
+        Text Endpoint_URL__c
         Boolean Is_Active__c
-        String Threshold_Score__c
-        String Version__c
-        String Error_Message__c
-        DateTime Last_Verified__c
     }
-    
-    Google_Calendar_Integration__c {
-        Id GoogleCalendarId PK
-        Reference User__c FK
-        String Access_Token__c
-        String Refresh_Token__c
-        DateTime Token_Expiry__c
-        String Calendar_ID__c
+
+    ATS_SMS_Integration__mdt {
+        Text Account_ID__c
+        Text Authentication_Token__c
+        Boolean Create_Activity_Record__c
+        Text Encryption_Key__c
+        Text From_Number__c
+        Boolean Is_Integration_Active__c
+        Text URL__c
+    }
+
+    ATS_Zoom_Integration_Data__mdt {
+        Text Auth_URL__c
+        Text Base_Url__c
+        Text Client_Id__c
+        Text Client_Secret__c
+        Text Encryption_Key__c
+        DateTime Last_Refresh_Date__c
+        Text Refresh_Token__c
+        Text Token_URL__c
+    }
+
+    TK_Field_Mapping__mdt {
+        Text Field_Api_Name__c
+        Text Field_Label__c
+        Text Field_Type__c
         Boolean Is_Active__c
-        DateTime Last_Sync__c
-    }
-    
-    %% TextKernel Integration Objects
-    TextKernel_Config__c {
-        Id TextKernelConfigId PK
-        String API_Key__c
-        String Account_ID__c
-        String Service_URL__c
-        Boolean Is_Active__c
-        String Parsing_Language__c
-        Boolean Enable_Enrichment__c
-    }
-    
-    Resume_Parse_Log__c {
-        Id ResumeParseLogId PK
-        Reference Contact__c FK
-        Reference Application__c FK
-        String Parse_Status__c
-        String TextKernel_ID__c
-        DateTime Parse_Date__c
-        String Error_Message__c
-        LongText Raw_Response__c
-        Decimal Confidence_Score__c
-    }
-    
-    %% Twilio Integration Objects
-    Twilio_Configuration__c {
-        Id TwilioConfigId PK
-        String Account_SID__c
-        String Auth_Token__c
-        String From_Number__c
-        String Messaging_Service_SID__c
-        Boolean Is_Active__c
-        String Webhook_URL__c
-    }
-    
-    SMS_Log__c {
-        Id SMSLogId PK
-        Reference Contact__c FK
-        Reference Message_Stats__c FK
-        String To_Number__c
-        String From_Number__c
-        String Message_Body__c
-        String Twilio_SID__c
-        String Status__c
-        DateTime Sent_Date__c
-        DateTime Delivered_Date__c
-        String Error_Code__c
-        String Error_Message__c
-    }
-    
-    %% Zoom Integration Objects
-    Zoom_Configuration__c {
-        Id ZoomConfigId PK
-        String API_Key__c
-        String API_Secret__c
-        String JWT_Token__c
-        String Account_ID__c
-        Boolean Is_Active__c
-        String Default_Meeting_Settings__c
-    }
-    
-    Zoom_Meeting__c {
-        Id ZoomMeetingId PK
-        Reference Interview__c FK
-        String Meeting_ID__c
-        String Join_URL__c
-        String Host_URL__c
-        String Password__c
-        DateTime Start_Time__c
-        Integer Duration__c
-        String Recording_URL__c
-        String Status__c
-    }
-    
-    %% Integration Metadata Objects
-    Integration_Setting__mdt {
-        String DeveloperName PK
-        String Integration_Type__c
-        String Endpoint_URL__c
-        String Authentication_Method__c
-        Boolean Is_Active__c
-        String Custom_Headers__c
-        Integer Timeout__c
-        Integer Retry_Count__c
-    }
-    
-    Field_Mapping__mdt {
-        String DeveloperName PK
-        String Integration_Type__c
-        String Source_Field__c
-        String Target_Field__c
-        String Data_Type__c
-        String Transformation_Class__c
         Boolean Is_Required__c
+        Text Mapped_Field__c
+        Text Mapped_Object__c
+        Text Section__c
     }
-    
+
+    ATS_Resume_Field_Mapping__mdt {
+        Text Field_Api_Name_New__c
+        Text Mapped_Field__c
+        Text Mapped_Object__c
+        Text Section_New__c
+    }
+
+    ATS_Talent_Intelligence_Data__mdt {
+        Text Authentication_Key__c
+        Text Encryption_Key__c
+        Text Talent_Intelligence_URL__c
+    }
+
+    %% Matching Intelligence Objects
+    ATS_Match_Cache__c {
+        Id Id PK
+        Lookup Candidate__c FK "Contact"
+        Lookup Job__c FK
+        LongTextArea Payload__c "Cached match result"
+        Number Sequence__c
+    }
+
+    Qualification_Run__c {
+        Id Id PK
+        Lookup Asymbl_Job__c FK
+        Checkbox Asymbl_Is_Qualified__c
+        Picklist Asymbl_Risk_Tier__c
+        DateTime Asymbl_Run_Date__c
+        Text Asymbl_Run_Key__c
+        Number Asymbl_Unmet_Count__c
+    }
+
+    ATS_Candidate_Search_Log__c {
+        Id Id PK
+        Number Candidates_Added__c
+        LongTextArea Filters__c
+        Text Keywords__c
+        DateTime Last_Searched__c
+        Number Results_Found__c
+    }
+
     %% Platform Events
-    Integration_Event__e {
-        String Integration_Type__c
-        String Record_Id__c
-        String Action__c
-        String Status__c
-        String Error_Message__c
-        DateTime Event_Time__c
-        String Payload__c
+    ATS_Record_Action__e {
+        Text Event_Type__c
+        Text Object_Api_Name__c
+        Text Payload__c
+        Text Record_Id__c
     }
-    
-    Email_Tracking_Event__e {
-        String Message_Stats_Id__c
-        String Event_Type__c
-        String Email_Address__c
-        DateTime Event_Time__c
-        String IP_Address__c
-        String User_Agent__c
+
+    Add_to_ATS__e {
+        Text PayloadFields "See package metadata for authoritative field list"
     }
-    
-    %% Integration Log Objects
-    Integration_Log__c {
-        Id IntegrationLogId PK
-        String Integration_Type__c
-        String Record_Id__c
-        String Action__c
-        String Request_Body__c
-        String Response_Body__c
-        Integer Response_Code__c
-        String Status__c
-        DateTime Start_Time__c
-        DateTime End_Time__c
-        String Error_Message__c
+
+    ATS_Platform_Event_Restriction__mdt {
+        Boolean Enable_on_Account__c
+        Boolean Enable_on_Contact__c
+        Boolean Enable_on_Job__c
+        Boolean Enable_on_Offer__c
+        Boolean Enable_on_Placement__c
+        Boolean Enable_on_ATS_Applicant__c
     }
-    
-    %% Webhook Objects
-    Webhook_Registration__c {
-        Id WebhookId PK
-        String Integration_Type__c
-        String Event_Type__c
-        String Endpoint_URL__c
-        String Secret_Key__c
-        Boolean Is_Active__c
-        DateTime Last_Called__c
-        Integer Failure_Count__c
-    }
-    
+
     %% Relationships
-    Contact ||--o{ Message_Stats__c : "receives"
-    Contact ||--o{ Application__c : "submits"
-    Contact ||--o{ Interview__c : "participates"
-    Contact ||--o{ Resume_Parse_Log__c : "has resume parsed"
-    Contact ||--o{ SMS_Log__c : "receives SMS"
-    
-    Job__c ||--o{ Application__c : "has"
-    Job__c ||--o{ Interview__c : "schedules"
-    Job__c ||--o{ Message_Stats__c : "related to"
-    
-    Application__c ||--o{ Message_Stats__c : "triggers"
-    Application__c ||--o{ Resume_Parse_Log__c : "parsed for"
-    
-    Interview__c ||--|| Zoom_Meeting__c : "scheduled via"
-    Interview__c }|--|| Google_Calendar_Integration__c : "synced to"
-    
-    Message_Stats__c ||--o| SMS_Log__c : "tracks"
-    Message_Stats__c }|--|| Email_Tracking_Event__e : "generates"
-    
-    TextKernel_Config__c ||--o{ Resume_Parse_Log__c : "processes"
-    Twilio_Configuration__c ||--o{ SMS_Log__c : "sends"
-    Zoom_Configuration__c ||--o{ Zoom_Meeting__c : "creates"
-    
-    Integration_Setting__mdt ||--o{ Integration_Log__c : "configures"
-    Field_Mapping__mdt }|--|| Integration_Setting__mdt : "belongs to"
-    
-    Integration_Log__c }|--|| Integration_Event__e : "publishes"
-    Webhook_Registration__c }|--|| Integration_Event__e : "listens to"
+    Contact ||--o{ Message_Stats__c : "receives (via Parent__c)"
+    Job_Board_Application__c ||--o{ Message_Stats__c : "receives (via Parent__c)"
+    Interview__c ||--o{ Message_Stats__c : "receives (via Parent__c)"
+
+    EmailMessage }o--|| Contact : "RelatedToId (standard)"
+
+    Contact ||--o{ ATS_Match_Cache__c : "matched against jobs"
+    Job__c ||--o{ ATS_Match_Cache__c : "cached matches"
+    Job__c ||--o{ Qualification_Run__c : "qualification runs"
+
+    TK_Field_Mapping__mdt ||--o{ Contact : "maps resume data onto"
+    ATS_Resume_Field_Mapping__mdt ||--o{ Contact : "maps resume data onto (newer)"
+    ATS_Talent_Intelligence_Data__mdt ||--o{ ATS_Match_Cache__c : "configures scoring service for"
+    ATS_Talent_Intelligence_Data__mdt ||--o{ Qualification_Run__c : "configures scoring service for"
+
+    ATS_Email_Integration__mdt ||--o{ EmailMessage : "configures sending for"
+    ATS_SMS_Integration__mdt ||--o{ EmailMessage : "configures SMS sending for"
+    ATS_Zoom_Integration_Data__mdt ||--o{ Interview__c : "configures Zoom meetings for"
+
+    Google_Recaptcha_Detail__c ||--o{ Job_Board_Application__c : "protects application forms for"
+
+    ATS_Platform_Event_Restriction__mdt ||--o{ ATS_Record_Action__e : "restricts publication of"
 ```
 
 ## Integration Categories
 
 ### 1. Communication Integrations
 
-#### Email Integration (Message_Stats__c)
-- **Purpose**: Tracks email communications and engagement metrics
-- **Key Features**:
-  - Email open tracking
-  - Click tracking
-  - Bounce handling
-  - Provider-agnostic design
-- **Related Objects**:
-  - Contact (recipient)
-  - Job__c (context)
-  - Application__c (trigger)
-  - Email_Tracking_Event__e (real-time events)
-
-#### SMS Integration (Twilio)
-- **Configuration**: Twilio_Configuration__c
-- **Logging**: SMS_Log__c
-- **Features**:
-  - SMS delivery tracking
-  - Two-way messaging support
-  - Error handling and retry logic
-  - Webhook support for status updates
+#### Email/SMS Integration (Message_Stats__c)
+- **Purpose**: Tracks email and SMS communication engagement metrics
+- **Key Features**: open/click/bounce/delivery tracking via a polymorphic `Parent__c` lookup (can reference Contact, Job_Board_Application__c, Interview__c, etc. depending on `Stats_Type__c`), block/unique-open/unique-click counters
+- **Configuration**: `ATS_Email_Integration__mdt` (SendGrid via Twilio) and `ATS_SMS_Integration__mdt` (Twilio SMS)
+- **Standard Object Extension**: `EmailMessage` carries ATS-specific tracking fields (`Clicks_Count__c`, `Opens_Count__c`, `Last_Event_Time__c`, `Is_Incoming__c`, `Twilio_External_Message_Id__c`)
 
 ### 2. Resume Parsing Integration (TextKernel)
 
 #### Configuration and Processing
-- **Configuration Object**: TextKernel_Config__c
-- **Processing Log**: Resume_Parse_Log__c
+- **Legacy/Primary Mapping**: `TK_Field_Mapping__mdt`
+- **Newer Granular Mapping** *(added since prior revision)*: `ATS_Resume_Field_Mapping__mdt`, `ATS_Skill_Summary_Mapping__mdt`, `ATS_Work_Experience_Mapping__mdt`
+- **Result Tracking on Contact**: `Is_Resume_Parsed__c`, `Parsing_Error__c`, `Asymbl_Parsed_Resume__c` (new)
+- **Relevant Apex**: `ATS_TKIntegrationService`, `ATS_TKIntegrationBatch`, `ATS_TKResumeParsingInvocable`, `ATS_TKIntegrationCalloutMock`
 - **Data Flow**:
-  1. Resume uploaded to Application__c
+  1. Resume file uploaded via ContentVersion (flagged `Is_Primary__c` if primary resume)
   2. TextKernel API called for parsing
-  3. Structured data extracted and mapped
-  4. Contact and Application records updated
-  5. Parse results logged for audit
+  3. Structured data extracted and mapped via the `*_Mapping__mdt` metadata
+  4. Contact fields updated; `Is_Resume_Parsed__c`/`Parsing_Error__c` reflect outcome
 
-### 3. Video Conferencing Integration (Zoom)
+### 3. Video Conferencing Integration (Zoom / Google Meet)
 
 #### Meeting Management
-- **Configuration**: Zoom_Configuration__c
-- **Meeting Records**: Zoom_Meeting__c
-- **Integration Flow**:
-  1. Interview scheduled in Interview__c
-  2. Zoom API creates meeting
-  3. Meeting details stored in Zoom_Meeting__c
-  4. Join URLs distributed via Message_Stats__c
-  5. Recording URLs captured post-meeting
+- **Configuration**: `ATS_Zoom_Integration_Data__mdt` (OAuth client credentials, token refresh)
+- **Meeting Reference on Interview**: `Interview__c.Zoom_Meeting_Id__c`, `Interview__c.Online_Platforms__c` (supports both Zoom Meeting and Google Meet), `Interview__c.Event_Id__c` (calendar event)
+- **Remote Site Settings**: `ZoomAuthenticationAPI`, `ZoomAuthentication`
+- **Relevant Apex**: `ATS_GoogleAuthService`, `ATS_ZoomAuthCallback` (Visualforce)
+
+> **Correction**: there is no dedicated `Zoom_Meeting__c` object — all Zoom meeting state lives directly on `Interview__c`.
 
 ### 4. Security Integration (Google reCAPTCHA)
 
 #### Anti-Bot Protection
-- **Configuration**: Google_Recaptcha_Detail__c
-- **Implementation Areas**:
-  - Job application forms
-  - Candidate registration
-  - Public-facing endpoints
-- **Features**:
-  - Score-based verification
-  - Version flexibility (v2/v3)
-  - Error handling
+- **Configuration**: `Google_Recaptcha_Detail__c` (`Client_Id__c`, `Key__c`)
+- **Implementation Areas**: Job application forms on the `BP_ATS` public site
 
 ### 5. Calendar Integration (Google Calendar)
 
-#### Interview Scheduling
-- **Configuration**: Google_Calendar_Integration__c
-- **Sync Features**:
-  - Bi-directional sync
-  - Conflict detection
-  - Automatic updates
-  - Multi-calendar support
+- Calendar sync behavior is controlled through `Generic_Setting__mdt` fields (`Is_Enable_Event_Creation__c`, `Event_Creation_Type__c`) plus the `Google` remote site setting — there is **no** dedicated `Google_Calendar_Integration__c` object
 
-## Integration Patterns
+### 6. Candidate/Job Matching Intelligence *(new category — not present in prior revision)*
 
-### 1. Event-Driven Architecture
-```
-Platform Events:
-- Integration_Event__e: Generic integration events
-- Email_Tracking_Event__e: Email-specific tracking
-```
+#### Talent Intelligence Service
+- **Configuration**: `ATS_Talent_Intelligence_Data__mdt` (service URL, auth key), `ATS_Job_Intelligence_Setting__mdt` (tunable scoring settings), `ATS_Qualification_Config__mdt` (qualification gate rules)
+- **Result Objects**: `ATS_Match_Cache__c` (cached candidate-job match payloads), `Qualification_Run__c` (per-run qualification scoring outcome, risk tier, unmet-gate count)
+- **Search Analytics**: `ATS_Candidate_Search_Log__c` logs keyword/filter search activity for the `Candidate_Search_Logs` custom Report Type
+- **Relevant Apex**: `ATS_QualificationGateEngine`, `ATS_QualificationPrecompute`, `ATS_MatchCacheController`
 
-### 2. Webhook Management
-```
-Webhook_Registration__c:
-- Event subscription management
-- Failure tracking and retry
-- Security (secret keys)
-```
+### 7. Platform Event Architecture
 
-### 3. Centralized Logging
-```
-Integration_Log__c:
-- Request/Response capture
-- Performance monitoring
-- Error tracking
-- Audit trail
-```
+- **ATS_Record_Action__e**: generic record-action event (`Event_Type__c`, `Object_Api_Name__c`, `Payload__c`, `Record_Id__c`), publication of which can be disabled per-object via `ATS_Platform_Event_Restriction__mdt`
+- **Add_to_ATS__e**: cross-object event used to trigger "add to ATS" workflows from Contact-centric flows (`Add_to_ATS_From_Contact` flow)
 
-### 4. Metadata-Driven Configuration
-```
-Custom Metadata Types:
-- Integration_Setting__mdt: Runtime configuration
-- Field_Mapping__mdt: Dynamic field mapping
-```
-
-## Data Flow Examples
-
-### Email Campaign Flow
-1. Marketing user creates campaign targeting job applicants
-2. Message_Stats__c records created for each recipient
-3. Emails sent via configured provider
-4. Email_Tracking_Event__e captures open/click events
-5. Message_Stats__c updated with engagement metrics
-6. Email_Template_Stats__c aggregates performance
-
-### Resume Parsing Flow
-1. Candidate uploads resume to Application__c
-2. Integration_Event__e triggers TextKernel processing
-3. TextKernel_Config__c provides API credentials
-4. Parse results stored in Resume_Parse_Log__c
-5. Contact and Application fields updated via Field_Mapping__mdt
-6. Integration_Log__c captures full transaction
-
-### Interview Scheduling Flow
-1. Recruiter creates Interview__c record
-2. Zoom_Configuration__c checked for active config
-3. Zoom API creates meeting
-4. Zoom_Meeting__c stores meeting details
-5. Google_Calendar_Integration__c syncs to calendar
-6. Message_Stats__c sends invitations with links
+> **Correction**: the prior revision invented `Integration_Event__e`, `Email_Tracking_Event__e`, `Integration_Log__c`, and `Webhook_Registration__c`. None of these exist — the package's event-driven architecture consists of exactly the two platform events listed above, governed by `ATS_Platform_Event_Restriction__mdt`.
 
 ## Security Considerations
 
 ### API Key Management
-- Encrypted storage in configuration objects
-- Regular rotation policies
-- Environment-specific configurations
+- Credentials are stored on dedicated custom metadata types (`ATS_Zoom_Integration_Data__mdt`, `ATS_SMS_Integration__mdt`, `ATS_Email_Integration__mdt`, `ATS_Talent_Intelligence_Data__mdt`, `ATS_Integration_Settings__mdt`), most with a paired `Encryption_Key__c` field
+- `ATS_RemoteSiteSettingService` manages the underlying Remote Site Settings (Google, TwilioSMS, ZoomAuthenticationAPI, ZoomAuthentication)
 
 ### Data Privacy
-- PII handling in integration logs
-- GDPR compliance for EU candidates
-- Data retention policies
+- PII handling occurs primarily through Contact extension fields and `ATS_Log__c` (which supports a `Preserve_Log__c` flag for retaining specific log entries)
 
 ### Access Control
-- Integration-specific permission sets
-- Field-level security on sensitive data
-- API user restrictions
+- `ATS_Manage_Search_Sources` custom permission gates who can configure candidate search source settings
+- Field-level security should be applied to all integration credential fields
 
 ## Best Practices
 
 ### 1. Error Handling
-- Comprehensive logging in Integration_Log__c
-- Retry mechanisms for transient failures
-- User-friendly error messages
-- Alerting for critical failures
+- `ATS_Log__c` captures class/method/stack-trace detail for integration failures
+- Mock classes (`ATS_TKIntegrationCalloutMock`) support safe test coverage of callouts
 
 ### 2. Performance
-- Asynchronous processing for heavy operations
-- Bulk API usage where available
-- Caching for frequently accessed data
-- Governor limit awareness
+- `ATS_Match_Cache__c` exists specifically to avoid recomputing expensive candidate/job match scoring on every view
+- Batch classes (`ATS_TKIntegrationBatch`, `ATS_TwilioEmailActivityBatch`, `ATS_SMSIntegrationBatch`) handle bulk integration processing within governor limits
 
 ### 3. Monitoring
-- Dashboard for integration health
-- Real-time alerts via platform events
-- Performance metrics tracking
-- SLA monitoring
+- `ATS_TwilioEmailStatsScheduler` periodically refreshes `Message_Stats__c`
+- `Matching_Candidates_Last_Refreshed__c` (Job__c) / `Matching_Jobs_Last_Refreshed__c` (Contact) expose staleness of matching-intelligence data directly on the records themselves
 
 ### 4. Maintenance
-- Regular cleanup of old logs
-- Token refresh automation
-- Version compatibility checks
-- Documentation updates
-
-## Integration Testing Strategy
-
-### Unit Testing
-- Mock external services
-- Test error scenarios
-- Validate field mappings
-- Check governor limits
-
-### Integration Testing
-- Sandbox environment setup
-- End-to-end flow validation
-- Performance testing
-- Security testing
-
-### Monitoring in Production
-- Real-time dashboards
-- Alert configurations
-- Performance baselines
-- Incident response procedures
+- Regularly review `ATS_Platform_Event_Restriction__mdt` settings when performing large data loads to avoid unnecessary event volume
+- Rotate credentials in the integration metadata types on a defined schedule
