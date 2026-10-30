@@ -1,293 +1,102 @@
-# ARA (Asymbl Recruiting Agent) Apex Architecture Document
+# ARA (Asymbl Copilot) Apex Architecture Document
 
-## Executive Summary
+*Regenerated 2026-10-30 against `ara` repo, branch `master`, commit `ba1083bd605581d3da5ca881a9e10db9e86fb878`.*
 
-The ARA (Asymbl Recruiting Agent) package contains 25 Apex classes that form a comprehensive AI-powered recruiting automation system. The architecture follows consistent design patterns with main classes, helper classes, and comprehensive test coverage. The system integrates with Salesforce GenAI Functions to provide intelligent automation for recruiting workflows.
+## Correction Notice
 
-## Architecture Overview
+The prior version of this document documented 25 Apex classes. The actual count on `master` is **174** (97 non-test / ~77 test classes), plus 1 trigger. The prior document's design-pattern description (Main + Helper + Test triad, consistent error handling via Custom Labels) remains directionally accurate and is retained below, now applied to the full real inventory.
 
-### Component Groups
+## Component Groups
 
-#### 1. Email Management Components
-**Purpose**: Automate email communications throughout the recruiting process
+### 1. Job Summary & Job Lifecycle
+- `ARA_GenerateJobSummary`, `ARA_JobSummaryHelper`, `ARA_UpdateJobSummary`, `ARA_UpdateJobSummaryBatch`, `ARA_JobSummaryController` — generate/refresh AI job summaries on `Job__c.Job_Summary__c`, both on-demand and via nightly/batch regeneration
+- `ARA_JobTriggerHandler`, `ARA_JobTriggerHelper`, `ARA_TriggerHandler` (base handler framework) — fired from `ARA_JobTrigger` on `bpats__Job__c` (all before/after insert/update/delete/undelete contexts)
+- `ARA_GenerateJobOverview` — produces job-activity overview (time-period/filter driven), backs the `ARA_GenerateJobOverviewTemplateAction` GenAiFunction
+- `ARA_GenerateJobDescriptionTemplate`, `ARA_SaveJobDescription`, `ARA_JDTemplateChecker` — JD generation/validation/save workflow (Recruitment_Marketing plugin)
+- `ARA_PostJobExternally`, `ARA_IdentifyJobForPostExternally` — external job-board posting (Sourcing_Management plugin)
 
-- **ARA_DraftOfferEmail** + **ARA_DraftOfferEmailHelper**
-  - Generates and sends offer letter drafts to candidates
-  - Integrates with GenAI Function: `ARA_DraftOfferEmail`
-  - Uses email template: `ARA/ARA_Offer_Draft_Template`
-  
-- **ARA_ScheduleReminderEmail**
-  - Schedules and sends reminder emails for interviews and follow-ups
-  - Integrates with GenAI Function: `ARA_Schedule_Reminder_Email`
-  - Uses email template: `ARA/ARA_Reminder_Email_Template`
-  
-- **ARA_EmailUtility**
-  - Centralized utility class for email operations
-  - Handles template retrieval, email sending, and error handling
-  - Used by all email-related components
-  
-- **ARA_ScheduledEmailSender**
-  - Batch/scheduled job for sending queued emails
-  - Ensures reliable email delivery with retry mechanisms
+### 2. Candidate Summary
+- `ARA_GenerateCandidateSummary`, `ARA_CandidateSummaryHelper`, `ARA_UpdateCandidateSummary`, `ARA_UpdateCandidateSummaryOnContactBatch`, `ARA_CandidateSummaryGeneratorController`, `ARA_GetContacts` — generate/update AI summaries on `Contact.Candidate_Summary__c` / `Overall_summary__c`, surfaced through a custom UI (`araCandidateSummaryGeneratorPage` LWC)
 
-#### 2. Interview Scheduling Components
-**Purpose**: Automate interview scheduling and coordination
+### 3. Hiring Manager Summary
+- `ARA_GetHiringManagerInfo`, `ARA_HiringManagerInfoHelper`, `ARA_UpdateHiringManagerSummary` — writes `Contact.Hiring_Manager_Summary__c`
 
-- **ARA_ScheduleInterview** + **ARA_ScheduleInterviewHelper**
-  - Core interview scheduling logic
-  - Integrates with GenAI Function: `ARA_Schedule_Interview`
-  - Coordinates interviewer availability and candidate scheduling
-  - Handles calendar integration and conflict resolution
+### 4. Candidate Submission / Hiring Manager Communication
+- `ARA_SubmitCandidatesToManager`, `ARA_SubmitCandidatesToManagerHelper` — original candidate-submission-by-email flow
+- `ARA_CandidateSubmission`, `ARA_CandidateSubmissionToHM`, `ARA_CandidateSubmissionToHMHelper`, `ARA_CandidateSubmissionEmailController` — expanded hiring-manager submission/email workflow (Interview_Management plugin)
 
-#### 3. Candidate Submission Components
-**Purpose**: Streamline candidate submission to hiring managers
+### 5. Interview Scheduling & Management
+- `ARA_ScheduleInterview`, `ARA_ScheduleInterviewHelper`, `ARA_ScheduleInterviewController`, `ARA_ScheduleInterviewForApplicantHelper` — core scheduling (Google Meet/Zoom/in-person)
+- `ARA_UpdateScheduleInterview`, `ARA_UpdateScheduleInterviewHelper` — reschedule/update an existing interview
+- `ARA_GetInterviewRecordsForUpdate`, `ARA_InterviewerDetailsForAgent` — interview lookups used by Agentforce to resolve records before update
+- `ARA_AvailabilitySlotFinder` — interviewer slot-availability resolution
+- `ARA_TimeZoneController` — timezone normalization for scheduling
 
-- **ARA_SubmitCandidatesToManager** + **ARA_SubmitCandidatesToManagerHelper**
-  - Manages candidate submission workflow
-  - Integrates with GenAI Function: `ARA_SubmitCandidatesToManager`
-  - Uses email template: `ARA/Submit_Candidate_To_Hiring_Manager`
-  - Includes candidate profiles, resumes, and recommendations
+### 6. Interview Reminders
+- `ARA_ScheduleReminderEmail`, `ARA_ScheduledEmailSender`, `ARA_GetInterviewsForReminder`, `ARA_InterviewReminderWizardController` — reminder-email scheduling and the multi-step reminder wizard LWC backend
 
-#### 4. Hiring Manager Information Components
-**Purpose**: Retrieve and process hiring manager details
+### 7. Interview Feedback
+- `ARA_CandidatesSummarisedFeedback`, `ARA_GenerateCandidateFeedbackSummary`, `ARA_UpdateFeedbackSummariesOnContact` — aggregate/summarize interviewer feedback and persist to `Contact`
 
-- **ARA_GetHiringManagerInfo** + **ARA_HiringManagerInfoHelper**
-  - Retrieves hiring manager information for job requisitions
-  - Integrates with GenAI Function: `Generating_summary_of_hiring_manager`
-  - Provides intelligent summaries of hiring manager preferences and history
+### 8. Candidate–Job Comparison & Job Fit Assessment
+- `ARA_CandidateDataForJobComparision`, `ARA_CandidateJobComparisonHelper`, `ARA_GenerateCandidateJobComparison`, `ARA_SaveCandidateJobComparison` — candidate-job comparison profile generation (writes `ATS_Applicant__c.Candidate_Job_Comparison__c`)
+- `ARA_UpdateApplicationNotes`, `ARA_UpdateApplicationNotesBatch`, `ARA_ApplicationNotesValidator` — job-fit assessment / application-notes workflow (writes `ATS_Applicant__c.Enhanced_Application_Notes__c`), paired with `ARA_UpdateJobFitAssessmentFlow`
 
-#### 5. Candidate Feedback Components
-**Purpose**: Collect and summarize interview feedback
+### 9. Offer Management
+- `ARA_DraftOfferEmail`, `ARA_DraftOfferEmailHelper`, `ARA_GenerateOfferEmail` — offer letter drafting and email generation (uses `ARA/ARA_Offer_Draft_Template`)
 
-- **ARA_CandidatesSummarisedFeedback**
-  - Aggregates and summarizes feedback from multiple interviewers
-  - Integrates with GenAI Function: `ARA_CandidatesSummarisedFeedback`
-  - Uses GenAI Prompt: `Candidate_Feedback_Summary_For_All_Jobs`
-  - Provides AI-powered insights on candidate strengths and areas of concern
+### 10. Applicant / Job-Board Application Addition
+- `CP_AddApplicantToJob`, `ARA_ApplicantAdditionToJob`, `ARA_ApplicantRetriever` — add a candidate to a job
+- `ARA_AddJBAApplicantToJob` — add a Job Board Application record to a job
 
-#### 6. Job Application Components
-**Purpose**: Manage job applications (CP_ prefix indicates Candidate Portal module)
+### 11. Record Identification / Query Utilities (shared across most plugins)
+- `ARA_IdentifyRecordByField`, `ARA_IdentifyJobRecordsByHiringManager`, `ARA_QueryApplicantByFields`, `ARA_QueryRecord`, `ARA_SOQLGenerator` — generic natural-language-to-SOQL and field-based record lookup used across nearly every plugin to resolve ambiguous user references to concrete records
+- `ARA_GetJobQuestions` — retrieves job screening questions
 
-- **CP_AddApplicantToJob**
-  - Adds candidates to job openings
-  - Integrates with GenAI Function: `Add_Applicant_to_Job`
-  - Handles stage assignment and initial screening
+### 12. Email Infrastructure
+- `ARA_EmailUtility`, `ARA_DraftEmailsForPreview`, `ARA_SendEmailController` — shared email send/preview infrastructure used by Email_Management plugin and candidate-submission flows
+- `ARA_OwaErrorNotificationQueueable` — queued org-wide-address error notifications
 
-#### 7. Test Classes
-**Purpose**: Ensure code quality and reliability
+### 13. Voice Interview / Voice Agent Subsystem
+- `ARA_ScheduleVoiceInterview`, `ARA_VoiceInterviewHandler`, `ARA_VoiceInterviewCalloutHandler`, `ARA_VoiceInterviewWebhookHandler` — outbound voice-call scheduling and inbound webhook processing
+- `ARA_RescheduleByVoiceAgent`, `ARA_GetVoiceInterviewRecordsForUpdate` — voice-driven rescheduling
+- `ARA_VoiceInterviewTaskBatch`, `ARA_FailureNotifyVoiceAgentBatch` — background task/notification batches for voice interviews
+- `ARA_VoiceMockGenerator`, `ARA_VoiceCalloutMockMultiResponse`, `ARA_MockGenerator` — HTTP callout mocks for voice-agent integration tests
 
-- ARA_DraftOfferEmailTest
-- ARA_GetHiringManagerInfoTest
-- ARA_ScheduleInterviewTest
-- ARA_ScheduleReminderEmailTest
-- ARA_SubmitCandidatesToManagerTest
-- ARA_CandidatesSummarisedFeedbackTest
-- CP_AddApplicantToJobTest
+### 14. Candidate Screening (Multi-Candidate Voice Screening)
+- `ARA_InitiateMultiScreeningCall`, `ARA_InitiateScreeningCall`, `ARA_ProcessScreeningQuestions`, `ARA_CandidateScreeningWebhookHandler`, `ARA_ScreeningResponseController` — orchestrate multi-candidate phone screening calls and capture responses
+- `ARA_ScreeningCallBatch`, `ARA_ScreenRetryBatch`, `ARA_ScreenRetryNotificationBatch`, `ARA_ScreeningCallSummaryBatch`, `ARA_ScreeningCompletionBellBatch` — batch lifecycle for screening calls (initiation, retries, summary email, completion notification)
 
-#### 8. Utility Classes
-**Purpose**: Shared functionality and constants
+### 15. Configuration & Notes Cleanup
+- `ARA_ActionComponentConfiguration`, `ARA_ActionComponentConfigurationUtil` — reads `ARA_Action_Component_Configuration__mdt` to drive conditional UI/action behavior
+- `ARA_NotesCleanupController` — backs the `Interview__c.Notes_Cleanup_Agent` QuickAction
 
-- **ARA_TestUtility**
-  - Test data creation and setup methods
-  - Mock data generators for unit tests
-  
-- **CP_Constants**
-  - System-wide constants and configuration values
-  - Error messages and status codes
+### 16. Shared Utilities
+- `ARA_Utility`, `ARA_TestUtility` — cross-cutting helper and test-data-factory utilities
+- `CP_Constants` — shared constants (CP prefix = Candidate Portal / core-platform utilities inherited from base ATS)
+
+### 17. Test Classes
+Each main/helper class above has a corresponding `*Test` class (roughly 77 of the 174 total classes), following the package's enforced minimum code-coverage convention. Representative examples: `ARA_ScheduleInterviewTest`, `ARA_DraftOfferEmailTest`, `ARA_VoiceInterviewWebhookHandlerTest`, `ARA_ScreeningCallBatchTest`, `CP_AddApplicantToJobTest`.
 
 ## Design Patterns
 
-### 1. Main Class + Helper Pattern
-Most components follow a consistent pattern:
-- **Main Class**: Handles API exposure, parameter validation, and orchestration
-- **Helper Class**: Contains business logic, database operations, and integrations
-- **Benefits**: Separation of concerns, easier testing, better maintainability
+### Main Class + Helper Class + Test Class
+The dominant pattern remains: a thin "Main" class exposed to GenAiFunction/Apex-action invocation, a "Helper" class containing the actual business logic and SOQL/DML, and a dedicated test class. This is now applied across roughly 30+ Main/Helper pairs rather than the single handful previously documented.
 
-### 2. Error Handling Pattern
-Consistent error handling across all components:
-```apex
-try {
-    // Business logic
-} catch (Exception e) {
-    // Log error
-    // Return standardized error response
-    // Use custom labels for error messages
-}
-```
+### GenAI Integration Pattern
+1. GenAiPlugin instructions (natural language) steer the Agentforce reasoning engine on when/how to call a function.
+2. GenAiFunction (`apex` type) invokes the Main Apex class with structured `lightning:type`-typed inputs.
+3. Main class validates inputs, calls Helper class for business logic.
+4. Result is returned via the function's output schema (often `lightning__richTextType` or `lightning__objectType` payloads consumed directly by the Agentforce response, not a generic JSON envelope).
 
-### 3. GenAI Integration Pattern
-Standardized approach for AI integration:
-1. Prepare context data
-2. Call GenAI Function with structured inputs
-3. Process AI response
-4. Apply business rules and validation
-5. Execute actions based on AI recommendations
-
-## Integration Architecture
-
-### GenAI Functions Integration
-The system leverages 8 GenAI Functions for intelligent automation:
-
-1. **ARA_SubmitCandidatesToManager**: Intelligently formats candidate submissions
-2. **Add_Applicant_to_Job**: Automates job application processing
-3. **ARA_Schedule_Interview**: Optimizes interview scheduling
-4. **ARA_Schedule_Reminder_Email**: Determines optimal reminder timing
-5. **ARA_CandidatesSummarisedFeedback**: Summarizes interview feedback
-6. **ARA_DraftOfferEmail**: Generates personalized offer letters
-7. **Candidate_Feedback_Summary_For_All_Jobs**: Provides cross-job insights
-8. **Generating_summary_of_hiring_manager**: Creates hiring manager profiles
-
-### GenAI Plugins
-- **Recruiting**: Core recruiting automation capabilities
-- **Interview_Management**: Interview-specific AI functions
-
-### Email Template Integration
-Four email templates support automated communications:
-- `ARA/ARA_Reminder_Email_Template`
-- `ARA/Submit_Candidate_To_Hiring_Manager`
-- `ARA/ARA_Offer_Draft_Template`
-- Generic folder: `ARA`
-
-## Workflow Architecture
-
-### 1. Candidate Application Flow
-```
-CP_AddApplicantToJob → GenAI Processing → Job Stage Assignment → Notification
-```
-
-### 2. Interview Scheduling Flow
-```
-ARA_ScheduleInterview → Calendar Check → GenAI Optimization → 
-Invitation Send → ARA_ScheduleReminderEmail
-```
-
-### 3. Candidate Submission Flow
-```
-ARA_SubmitCandidatesToManager → GenAI Formatting → 
-Email Generation → Manager Notification
-```
-
-### 4. Feedback Collection Flow
-```
-Interview Completion → ARA_CandidatesSummarisedFeedback → 
-GenAI Analysis → Summary Generation
-```
-
-### 5. Offer Generation Flow
-```
-Candidate Selection → ARA_DraftOfferEmail → GenAI Content → 
-Template Population → Approval Workflow
-```
-
-## Error Handling and Resilience
-
-### Custom Labels for Error Messages
-The system uses 23 custom labels for consistent error messaging:
-
-**CP Module Labels:**
-- CP_ATS_Applicant_Created_Successfully_Label
-- CP_All_Contact_Records_Not_Found_Label
-- CP_Contact_Records_Not_Found_Label
-- CP_Error_Occured_Label
-- CP_Job_Doesnt_Has_Stage_Label
-- CP_Job_Records_Not_Found_Label
-
-**ARA Module Labels:**
-- ARA_Email_Not_Found
-- ARA_Email_Scheduled_Message
-- ARA_Email_Send
-- ARA_Email_Template_Not_Found
-- ARA_Empty_Applicants
-- ARA_Empty_Job_Name
-- ARA_Empty_List_of_Interviewers
-- ARA_Error_Interview_Scheduling_Label
-- ARA_Error_While_Sending_Email
-- ARA_Improper_Job_Candidate_Name
-- ARA_Interview_Scheduled_Label
-- ARA_Invalid_Date_Time
-- ARA_Invalid_Interview
-- ARA_Feedback_Not_Shared
-- ARA_Candidate_Not_Found
-- ARA_Job_Not_Found
-- ARA_Error_Occurred
-- ARA_Candidate_Not_On_Job
-
-### Error Handling Strategy
-1. **Input Validation**: All main classes validate inputs before processing
-2. **Try-Catch Blocks**: Comprehensive exception handling in all methods
-3. **Logging**: Errors logged for debugging and monitoring
-4. **User-Friendly Messages**: Custom labels provide clear error messages
-5. **Graceful Degradation**: System continues functioning even if AI services fail
+### Trigger Framework
+`ARA_JobTrigger` (the package's only Apex trigger) delegates entirely to `ARA_JobTriggerHandler`, which itself extends/uses the shared `ARA_TriggerHandler` base class — a conventional one-trigger-per-object, handler-class pattern.
 
 ## Security Architecture
 
-### Permission Set
-- **Asymbl_Recruiting_Agent_Admin**: Controls access to ARA functionality
-  - Grants access to all ARA Apex classes
-  - Enables GenAI function execution
-  - Provides email template access
+Three permission sets now govern ARA access (not one, as previously documented):
+- **Asymbl_Recruiting_Agent** — general ARA / Agentforce Copilot access
+- **Screening_Agent_Permission** — multi-candidate voice screening capability
+- **Voice_Agent_Permissions** — voice interview scheduling/rescheduling capability
 
-### Data Security
-1. **Field-Level Security**: Enforced through helper classes
-2. **Sharing Rules**: Respected in all database operations
-3. **CRUD Checks**: Performed before all DML operations
-4. **Input Sanitization**: Prevention of injection attacks
-
-## Testing Strategy
-
-### Test Coverage Requirements
-- Each main class has a dedicated test class
-- Minimum 75% code coverage enforced
-- Test classes use ARA_TestUtility for consistent test data
-
-### Test Patterns
-1. **Positive Testing**: Valid inputs and expected outcomes
-2. **Negative Testing**: Invalid inputs and error handling
-3. **Bulk Testing**: Governor limit compliance
-4. **Integration Testing**: GenAI function mocking
-
-## Performance Considerations
-
-### Governor Limits Management
-1. **Bulkification**: All operations support bulk processing
-2. **SOQL Optimization**: Minimal queries, efficient WHERE clauses
-3. **Async Processing**: Email sending uses batch/queueable
-4. **Caching**: Reusable data cached within transaction
-
-### Scalability Design
-1. **Modular Architecture**: Components can scale independently
-2. **Async Processing**: Heavy operations processed asynchronously
-3. **Efficient Algorithms**: Optimized for large data volumes
-4. **Resource Monitoring**: Built-in performance tracking
-
-## Best Practices Implementation
-
-### Code Organization
-1. **Consistent Naming**: ARA_ prefix for all ARA components
-2. **Clear Separation**: Business logic in helper classes
-3. **Reusable Components**: Utility classes for common operations
-4. **Documentation**: Inline comments and method documentation
-
-### Maintenance and Evolution
-1. **Version Control**: Package version 63.0
-2. **Backward Compatibility**: Maintained through careful API design
-3. **Feature Flags**: Conditional logic for feature rollout
-4. **Monitoring**: Built-in logging for troubleshooting
-
-## Future Enhancements
-
-### Planned Improvements
-1. **Enhanced AI Models**: More sophisticated GenAI prompts
-2. **Mobile Optimization**: Lightning mobile components
-3. **Analytics Dashboard**: Recruiting metrics and insights
-4. **Integration Expansion**: Additional third-party systems
-
-### Architecture Evolution
-1. **Microservices**: Potential decomposition of large components
-2. **Event-Driven**: Platform events for real-time updates
-3. **Machine Learning**: Custom ML models for predictions
-4. **API First**: RESTful APIs for external integrations
-
-## Conclusion
-
-The ARA package represents a well-architected, AI-powered recruiting automation system that leverages Salesforce's platform capabilities and GenAI functions. The consistent design patterns, comprehensive error handling, and modular architecture ensure maintainability, scalability, and reliability. The integration of AI throughout the recruiting workflow provides intelligent automation that enhances recruiter productivity and improves candidate experience.
+Plus 1 CustomPermission (`ARA_Job_Summary_Permission`) gating job-summary-specific behavior.

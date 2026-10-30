@@ -1,397 +1,155 @@
 # ARA ULTRATHINK Verification Report
 
-## Executive Summary
+*Regenerated 2026-10-30 against `ara` repo, branch `master`, commit `ba1083bd605581d3da5ca881a9e10db9e86fb878`.*
 
-This comprehensive verification report provides a detailed analysis of the ARA (Asymbl Recruiting Agent) package, comparing the actual package contents from `package.xml` with the documentation created. The verification reveals strong documentation coverage with minor discrepancies that need attention.
+## Executive Summary — Reset
 
-**Key Findings:**
-- **Actual Components**: 64 (per package.xml)
-- **Documented Components**: 64 (per overview)
-- **Documentation Coverage**: 100%
-- **Critical Gap**: None - all components documented
-- **Minor Issues**: Initial count error in verification
+The previous version of this report certified "100% documentation coverage" for a 64-component package. That certification was **false**: the underlying documentation it was verifying against was fabricated, not merely incomplete, and the 64-component baseline itself was wrong by roughly 13x versus the real `manifest/package.xml` (818 components). This report starts from zero and re-verifies against real metadata only.
 
----
-
-## 1. Complete Component Inventory
-
-### Actual Components from package.xml (64 Total)
-
-#### ApexClass (22 components)
-```
-1. ARA_DraftOfferEmail
-2. ARA_DraftOfferEmailHelper
-3. ARA_DraftOfferEmailTest
-4. ARA_EmailUtility
-5. ARA_GetHiringManagerInfo
-6. ARA_GetHiringManagerInfoTest
-7. ARA_HiringManagerInfoHelper
-8. ARA_ScheduledEmailSender
-9. ARA_ScheduleInterview
-10. ARA_ScheduleInterviewHelper
-11. ARA_ScheduleInterviewTest
-12. ARA_ScheduleReminderEmail
-13. ARA_ScheduleReminderEmailTest
-14. ARA_SubmitCandidatesToManager
-15. ARA_SubmitCandidatesToManagerHelper
-16. ARA_SubmitCandidatesToManagerTest
-17. ARA_CandidatesSummarisedFeedback
-18. ARA_CandidatesSummarisedFeedbackTest
-19. ARA_TestUtility
-20. CP_AddApplicantToJob
-21. CP_AddApplicantToJobTest
-22. CP_Constants
-```
-
-#### CustomLabel (24 components)
-```
-1. CP_ATS_Applicant_Created_Successfully_Label
-2. CP_All_Contact_Records_Not_Found_Label
-3. CP_Contact_Records_Not_Found_Label
-4. CP_Error_Occured_Label
-5. CP_Job_Doesnt_Has_Stage_Label
-6. CP_Job_Records_Not_Found_Label
-7. ARA_Email_Not_Found
-8. ARA_Email_Scheduled_Message
-9. ARA_Email_Send
-10. ARA_Email_Template_Not_Found
-11. ARA_Empty_Applicants
-12. ARA_Empty_Job_Name
-13. ARA_Empty_List_of_Interviewers
-14. ARA_Error_Interview_Scheduling_Label
-15. ARA_Error_While_Sending_Email
-16. ARA_Improper_Job_Candidate_Name
-17. ARA_Interview_Scheduled_Label
-18. ARA_Invalid_Date_Time
-19. ARA_Invalid_Interview
-20. ARA_Feedback_Not_Shared
-21. ARA_Candidate_Not_Found
-22. ARA_Job_Not_Found
-23. ARA_Error_Occurred
-24. ARA_Candidate_Not_On_Job
-```
-
-#### CustomLabels (1 component)
-```
-1. CustomLabels (metadata container)
-```
-
-#### EmailTemplate (4 components)
-```
-1. ARA (folder)
-2. ARA/ARA_Reminder_Email_Template
-3. ARA/Submit_Candidate_To_Hiring_Manager
-4. ARA/ARA_Offer_Draft_Template
-```
-
-#### GenAiFunction (8 components) ✓ Fully Documented
-```
-1. ARA_SubmitCandidatesToManager
-2. Add_Applicant_to_Job
-3. ARA_Schedule_Interview
-4. ARA_Schedule_Reminder_Email
-5. ARA_CandidatesSummarisedFeedback
-6. ARA_DraftOfferEmail
-7. Candidate_Feedback_Summary_For_All_Jobs
-8. Generating_summary_of_hiring_manager
-```
-
-#### GenAiPromptTemplate (2 components) ✓ Fully Documented
-```
-1. Generating_summary_of_hiring_manager
-2. Candidate_Feedback_Summary_For_All_Jobs
-```
-
-#### GenAiPlugin (2 components) ✓ Fully Documented
-```
-1. Recruiting
-2. Interview_Management
-```
-
-#### PermissionSet (1 component)
-```
-1. Asymbl_Recruiting_Agent_Admin
-```
+**Key Findings (this pass):**
+- **Actual Components (manifest/package.xml)**: 818
+- **Documented in this refreshed set**: 818 types accounted for; full per-item documentation provided for the 6 highest-value types (ApexClass, GenAiFunction, GenAiPromptTemplate, GenAiPlugin, EmailTemplate, CustomLabel) and the 7 CustomObjects; remaining UI/config/reporting types documented at summary level only (see Section 5)
+- **Critical Finding**: Prior documentation set was fabricated (invented tech stack, invented objects, invented REST APIs, ~13x undercount), not merely stale
+- **Net-new subsystem discovered**: Voice Interview / Voice Agent (7 objects' worth of supporting metadata, 5 plugins, dozens of Apex classes, 6 email templates — entirely undocumented previously)
 
 ---
 
-## 2. Documentation Coverage Matrix
+## 1. Complete Component Inventory — Verified Counts
 
-| Component Type | Count in package.xml | Documented | Coverage | Status |
-|---|---|---|---|---|
-| ApexClass | 22 | 22 | 100% | ✅ Complete |
-| CustomLabel | 24 | 24 | 100% | ✅ Complete |
-| CustomLabels | 1 | 1 | 100% | ✅ Complete |
-| EmailTemplate | 4 | 4 | 100% | ✅ Complete |
-| GenAiFunction | 8 | 8 | 100% | ✅ Complete |
-| GenAiPromptTemplate | 2 | 2 | 100% | ✅ Complete |
-| GenAiPlugin | 2 | 2 | 100% | ✅ Complete |
-| PermissionSet | 1 | 1 | 100% | ✅ Complete |
-| **TOTAL** | **64** | **64** | **100%** | ✅ Complete |
+Extracted directly from `ara:manifest/package.xml` (master, `ba1083bd`) via XML parse, cross-checked by `git ls-tree` enumeration of `force-app/main/default/{classes,genAiFunctions,genAiPlugins,genAiPromptTemplates,objects,email,labels}`.
 
----
+| Component Type | package.xml Count | Verified via filesystem | Match |
+|---|---|---|---|
+| ApexClass | 174 | 175 .cls files on disk (1 extra: see note) | ⚠ see note |
+| ApexTrigger | 1 | 1 | ✓ |
+| CustomLabel | 388 | 404 total in labels file (398 ARA + 6 CP) — discrepancy explained below | ⚠ see note |
+| CustomLabels (container) | 1 | 1 | ✓ |
+| EmailTemplate | 19 | 19 in master (21 on disk incl. 2 unreleased `ARA_Screening_Email_Template`/`ARA_Screening_SMS_Template` not yet in master) | ⚠ see note |
+| GenAiFunction | 44 | 44 folders under `genAiFunctions/` | ✓ |
+| GenAiPromptTemplate | 16 | 16 files under `genAiPromptTemplates/` | ✓ |
+| GenAiPlugin | 11 | 11 files under `genAiPlugins/` | ✓ |
+| Flow | 2 | 2 | ✓ |
+| PermissionSet | 3 | 3 | ✓ |
+| CustomObject | 7 | 7 object folders | ✓ |
+| CustomField | 85 | not independently re-counted at filesystem level; taken from package.xml | — |
+| CustomMetadata (records) | 22 | not independently re-counted | — |
+| Layout | 7 | 7 (1 per custom object) | ✓ |
+| LightningComponentBundle | 17 | not independently re-counted | — |
+| LightningTypeBundle | 5 | not independently re-counted | — |
+| RemoteSiteSetting | 1 | 1 (`Voice_Agent_Remote_Setting`) | ✓ |
+| CustomTab | 1 | 1 (`ARA_Voice_Agent_Call_Log__c`) | ✓ |
+| FlexiPage | 1 | 1 | ✓ |
+| QuickAction | 1 | 1 (`Interview__c.Notes_Cleanup_Agent`) | ✓ |
+| StaticResource | 1 | 1 (`ARA_Resources`) | ✓ |
+| ReportType | 2 | 2 | ✓ |
+| Report | 3 | 3 (incl. folder `ARAReports`) | ✓ |
+| CustomNotificationType | 2 | 2 | ✓ |
+| CustomPermission | 1 | 1 (`ARA_Job_Summary_Permission`) | ✓ |
+| BotTemplate | 1 | 1 (`Rosa_v1_Template`) | ✓ |
+| GenAiPlannerBundle | 1 | 1 (`Rosa_v1_Template`) | ✓ |
+| ListView | 1 | 1 | ✓ |
+| **TOTAL** | **818** | | |
+
+### Notes on discrepancies
+- **ApexClass (174 in package.xml vs. 175 .cls files on disk)**: the working tree has one additional `.cls` file not referenced in `master`'s `manifest/package.xml` — consistent with in-flight/unreleased work, similar to the email-template discrepancy below. Not investigated further at the individual-class level for this pass.
+- **CustomLabel (388 in package.xml vs. 404 in the labels metadata file)**: `manifest/package.xml` is a curated retrieve/deploy manifest and does not necessarily enumerate every label present in `CustomLabels.labels-meta.xml` (the labels file can contain labels used only by metadata not in this particular manifest, or newer labels added after the manifest was last regenerated). The labels documentation (`ARA_Custom_Labels_Documentation.md`) uses the **404** figure from the authoritative source file, not the package.xml figure, and flags this discrepancy explicitly.
+- **EmailTemplate (19 in master vs. 21 on disk)**: `ARA_Screening_Email_Template` and `ARA_Screening_SMS_Template` exist in the local working tree but fail `git show master:<path>` — i.e., they are uncommitted/unreleased relative to `master` and correctly excluded from the 19-count used throughout this doc set.
+
+## 2. Documentation Coverage Matrix (this refresh)
+
+| Component Type | Count | Fully Itemized In | Coverage Level |
+|---|---|---|---|
+| GenAiFunction | 44 | `ARA_GenAI_Functions_Documentation.md` | Full — every function, invocationTarget, type, plugin membership |
+| GenAiPlugin | 11 | `ARA_GenAI_Plugins_Documentation.md` | Full — every plugin, function list, real scope/instruction summary |
+| GenAiPromptTemplate | 16 | `ARA_GenAI_Prompt_Templates_Documentation.md` | Full — every template, consuming function, purpose |
+| EmailTemplate | 19 (+2 unreleased, noted) | `ARA_Email_Templates_Documentation.md` | Full — every template, subject, folder, purpose |
+| CustomLabel | 404 | `ARA_Custom_Labels_Documentation.md` | Categorized/representative — exhaustive per-label documentation of all 404 was judged to add no incremental value over categorized groupings; every category and ~90 representative labels are named explicitly |
+| ApexClass | 174/175 | `ARA_Apex_Architecture.md` | Grouped by 17 functional domains with representative class lists covering the large majority of non-test classes; not every one of the ~77 test classes is individually named (standard 1:1 naming convention with its main class makes this low-value) |
+| CustomObject | 7 | `ERD_ARA_Recruiting_Objects.md`, `ARA_Package_Overview.md` | Full — every object, every field, every relationship |
+| PermissionSet | 3 | `ARA_Package_Overview.md`, `ARA_Apex_Architecture.md` | Full — all 3 named with purpose |
+| Flow | 2 | `ARA_Package_Overview.md` | Named only (`ARA_UpdateJobFitAssessmentFlow`, `ARA_Voice_Interview_Flow`) — flow internals not traced |
+| LightningComponentBundle | 17 | `ARA_Package_Overview.md` (count only) | Count only — individual LWC-by-LWC documentation not produced this pass (flagged as a gap, see Section 6) |
+| Other UI/config/reporting types (Layout, FlexiPage, QuickAction, StaticResource, ReportType, Report, CustomNotificationType, CustomPermission, RemoteSiteSetting, CustomTab, ListView, LightningTypeBundle, BotTemplate, GenAiPlannerBundle) | ~29 combined | `ARA_Package_Overview.md` | Named individually in the component summary table; not given dedicated per-item documentation files |
 
 ## 3. AI Components Verification
 
-### GenAI Functions (8/8 ✓)
-All 8 GenAI Functions are properly documented with:
-- Input/output schemas
-- Business use cases
-- Integration patterns
-- Error handling
-- Example usage
+### GenAI Functions (44/44 ✓)
+All 44 are named, with real `invocationTarget`, `invocationTargetType`, owning plugin(s), and purpose, in `ARA_GenAI_Functions_Documentation.md`. One representative function (`ARA_ScheduleInterviewControllerApexAction`) is documented at full schema depth to illustrate the real `lightning:type`-based schema pattern used package-wide.
 
-### GenAI Prompt Templates (2/2 ✓)
-Both prompt templates are extensively documented with:
-- Prompt structure and design
-- Input data sources
-- Expected outputs
-- Quality control measures
-- Customization options
+### GenAI Prompt Templates (16/16 ✓)
+All 16 are named with consuming function, owning plugin (where applicable), and purpose. All confirmed `type=einstein_gpt__flex`.
 
-### GenAI Plugins (2/2 ✓)
-Both plugins are comprehensively documented with:
-- Function groupings
-- Configuration options
-- Security permissions
-- API endpoints
-- Performance characteristics
-
-### AI Component Relationships ✓
-The documentation correctly maps:
-- Functions to their respective plugins
-- Prompt templates to their consuming functions
-- Integration patterns between all AI components
-
----
+### GenAI Plugins (11/11 ✓)
+All 11 are documented with their full real function list and a summary of their real (often lengthy) `genAiPluginInstructions` content, including the cross-cutting confirmation-gate and topic-boundary-narrowing patterns observed across the package.
 
 ## 4. Critical Findings
 
-### 1. Documentation Accuracy
-- **Finding**: Package overview correctly states 64 components
-- **Verification**: package.xml confirms exactly 64 components
-- **Status**: Documentation is accurate
+### Finding 1: Prior documentation was fabricated, not stale
+The July 2025 documentation set described a 64-component package with a TensorFlow/Kubernetes/Kafka/GraphQL stack, SOC 2/ISO 27001 certification, fictional REST APIs (`/ara/v1/recruiting/*`), and fictional custom objects (`Job_Application__c`, `AI_Metrics__c`, `Plugin_Audit__c`, `PerformanceMetric__c`, `ErrorLog__c`). None of this exists in `force-app/main/default` on any branch inspected. This is qualitatively different from normal documentation drift and should inform how documentation for this product is produced/reviewed going forward (e.g. requiring a component-count spot-check against `manifest/package.xml` before any doc is accepted).
 
-### 2. Apex Class Documentation
-- **Finding**: All 22 Apex classes are properly documented
-- **Verification**: Cross-referenced with Apex Architecture document
-- **Note**: Initial verification error suggested 24 classes, but package.xml shows 22
-- **Status**: Complete documentation coverage
+### Finding 2: Real component count is ~13x the previously documented figure
+818 actual vs. 64 previously claimed.
 
-### 3. Documentation Quality
-- **Strength**: AI components (GenAI Functions, Prompts, Plugins) have exceptional documentation
-- **Strength**: Email templates are thoroughly documented
-- **Strength**: Error handling via Custom Labels is well documented
-- **Gap**: Some Apex classes may lack individual documentation
+### Finding 3: An entire subsystem (Voice Interview / Voice Agent) was undocumented
+Spanning 1 custom object + 6 custom metadata types' worth of configuration, 5 of 11 GenAiPlugins (Schedule_Voice_Interview, Reschedule_Voice_Interview, Screening_Process, plus voice-adjacent functions inside Interview_Management), roughly 20 Apex classes (batches, webhook handlers, callout handlers), 6 of 19 email templates, 2 of 3 permission sets, and both `CustomNotificationType`s.
 
----
+### Finding 4: GenAiPlugin real count is 11, not 2
+Previously documented: `Recruiting`, `Interview_Management` only. Missing: `Candidate_Summary`, `Email_Management`, `Interview_Reminder`, `JobFitAssessment`, `Recruitment_Marketing`, `Schedule_Voice_Interview`, `Reschedule_Voice_Interview`, `Screening_Process`.
 
-## 5. Component Types Not Found
+## 5. Component Types Previously Reported as "Not Found" — Now Corrected
 
-The following Salesforce metadata types were checked but not found in the package:
+The prior report's Section 5 stated Flows, Custom Objects, Custom Fields, Validation Rules, Record Types, Page Layouts, Lightning Pages, LWC, Aura, Visualforce, Static Resources, Custom Metadata Types, Custom Settings, Named Credentials, and Remote Site Settings were **all absent** from ARA, concluding ARA was "a pure code/AI automation package." This conclusion is false:
 
-### Standard Automation
-- ❌ Flows
-- ❌ Process Builders
-- ❌ Workflow Rules
-- ❌ Approval Processes
+| Previously claimed absent | Actual |
+|---|---|
+| Flows | 2 present |
+| Custom Objects | 7 present |
+| Custom Fields | 85 present |
+| Layouts | 7 present |
+| Lightning Pages (FlexiPage) | 1 present |
+| LWC | 17 present |
+| Static Resources | 1 present |
+| Custom Metadata Types | 6 of the 7 CustomObjects are CMDTs, plus 22 CustomMetadata records |
+| Remote Site Settings | 1 present |
+| Validation Rules | none found — this claim appears to hold |
+| Record Types | none found — this claim appears to hold |
+| Aura Components | none found — this claim appears to hold |
+| Visualforce Pages | none found — this claim appears to hold |
+| Named Credentials | none found as a distinct `NamedCredential` metadata type — voice-provider auth is stored in `ARA_Voice_Interview_Setting__mdt` fields (API key, endpoint) rather than a platform Named Credential, worth flagging as a possible security/secrets-hygiene consideration outside the scope of this documentation exercise |
 
-### Data Model
-- ❌ Custom Objects
-- ❌ Custom Fields
-- ❌ Validation Rules
-- ❌ Record Types
-- ❌ Page Layouts
-- ❌ Lightning Pages
+## 6. Known Gaps in This Refresh (honesty disclosure)
 
-### User Interface
-- ❌ Lightning Web Components
-- ❌ Aura Components
-- ❌ Visualforce Pages
-- ❌ Static Resources
+- **LightningComponentBundle (17) and LightningTypeBundle (5)**: named and counted in `ARA_Package_Overview.md`, but not individually documented component-by-component (no per-LWC purpose/property breakdown). A dedicated `ARA_LWC_Documentation.md` was not in the original 11-file scope for this refresh and was not added; flagging as a candidate for a future pass.
+- **CustomField (85) and CustomMetadata records (22)**: counted and the *fields relevant to the 7 ARA objects and the 7 extended ATS objects* are fully enumerated in `ERD_ARA_Recruiting_Objects.md` and `ARA_Package_Overview.md`, but a dedicated field-by-field data dictionary (per the "Field Dictionaries" folder pattern described in `ProductDocumentations/CLAUDE.md`) was not produced.
+- **Flow internals**: `ARA_UpdateJobFitAssessmentFlow` and `ARA_Voice_Interview_Flow` are named but their internal element graphs were not traced/documented.
+- **GenAiPromptTemplate internal prompt text**: template *purpose* and consuming function are documented for all 16, but the full internal prompt/grounding text of each template was not reproduced verbatim (these are often very long and were judged lower-value to reproduce in full than to summarize).
+- **Apex test-class-by-test-class documentation**: the ~77 test classes are acknowledged by naming convention (`<MainClass>Test`) rather than individually described.
 
-### Other
-- ❌ Custom Metadata Types
-- ❌ Custom Settings
-- ❌ Named Credentials
-- ❌ Remote Site Settings
+These gaps are scoped omissions (clearly flagged, not silently dropped), not fabrications — the distinction this report exists to enforce going forward.
 
-**Analysis**: The ARA package appears to be a pure code/AI automation package that operates on existing Salesforce objects rather than introducing new data models or UI components.
-
----
-
-## 6. Comparison with Other Packages
-
-### Package Structure Comparison: ARA vs TIME
-
-| Aspect | ARA (Recruiting Agent) | TIME (Time Management) | Analysis |
-|--------|------------------------|------------------------|----------|
-| **Total Components** | 64 | 945 | TIME is 15x larger |
-| **Component Types** | 8 | 26 | TIME has 3x more variety |
-| **Apex Classes** | 22 (34%) | 100 (11%) | ARA is more code-heavy proportionally |
-| **Custom Objects** | 0 | 23 | ARA uses existing objects; TIME has full data model |
-| **Custom Fields** | 0 | 261 | TIME has extensive data capture |
-| **UI Components** | 0 | 35 LWC + 6 VF | ARA has no UI; TIME has full UI |
-| **Custom Labels** | 24 | 383 | TIME has 16x more labels |
-| **AI Components** | 12 (18%) | 0 | ARA is AI-first; TIME is traditional |
-| **Email Templates** | 4 | 6 | Similar email automation |
-| **Validation Rules** | 0 | 20 | TIME has data integrity rules |
-| **Permission Sets** | 1 | 2 | Similar security approach |
-
-### Architecture Philosophy Comparison
-
-**ARA Package (AI-First Architecture):**
-- **Purpose**: Intelligent automation overlay
-- **Design**: Operates on existing Salesforce objects
-- **Focus**: AI/ML integration for process automation
-- **UI Strategy**: Leverages existing Salesforce UI
-- **Integration**: GenAI functions and prompt templates
-- **Complexity**: Low component count, high intelligence
-
-**TIME Package (Traditional Enterprise Architecture):**
-- **Purpose**: Full-stack business application
-- **Design**: Complete custom data model and UI
-- **Focus**: Comprehensive time tracking solution
-- **UI Strategy**: Custom Lightning components
-- **Integration**: External systems via APIs
-- **Complexity**: High component count, broad functionality
-
-### Component Distribution Analysis
-
-**ARA Distribution:**
-```
-AI Components:      19% (12/64)
-Apex Code:         34% (22/64)
-Custom Labels:     38% (24/64)
-Email Templates:    6% (4/64)
-Other:             3% (2/64)
-```
-
-**TIME Distribution:**
-```
-Custom Fields:     28% (261/945)
-Custom Labels:     41% (383/945)
-Apex Code:         11% (100/945)
-UI Components:      7% (68/945)
-Custom Objects:     2% (23/945)
-Other:            11% (110/945)
-```
-
-### Key Insights
-
-1. **Scale Difference**: TIME is a full enterprise application with 14x more components than ARA
-2. **Architecture Pattern**: ARA follows a "smart overlay" pattern while TIME is a "complete solution" pattern
-3. **AI Integration**: ARA dedicates 18% of components to AI; TIME has 0% AI components
-4. **Data Model**: TIME has extensive custom objects; ARA leverages existing CRM objects
-5. **User Interface**: TIME has 68 UI components; ARA relies on Salesforce standard UI
-6. **Maintenance**: ARA's smaller footprint = easier maintenance; TIME requires more governance
-
-### Package Evolution Indicators
-
-**ARA - Next Generation Package:**
-- AI-first design
-- Minimal footprint
-- High automation ratio
-- Platform-native approach
-- Future-ready architecture
-
-**TIME - Traditional Enterprise Package:**
-- Comprehensive functionality
-- Full-stack implementation
-- Extensive configuration
-- Self-contained solution
-- Proven architecture pattern
-
-**Conclusion**: ARA represents a modern AI-first approach to Salesforce development, focusing on intelligent automation with minimal footprint. TIME represents traditional enterprise package development with comprehensive functionality. Both are valid approaches serving different architectural needs.
-
----
-
-## 7. Recommendations
-
-### Immediate Actions (Priority 1)
-1. **Maintain Documentation**: Keep documentation synchronized with package changes
-2. **Automated Validation**: Implement automated package.xml validation
-3. **Version Tracking**: Add version history to documentation
-
-### Short-term Improvements (Priority 2)
-1. **Create Component Registry**: Maintain a live registry that auto-validates against package.xml
-2. **Add Dependency Mapping**: Document inter-class dependencies
-3. **Include Test Coverage**: Add test coverage percentages to documentation
-
-### Long-term Enhancements (Priority 3)
-1. **API Documentation**: Generate API docs from Apex classes
-2. **Integration Guide**: Create end-to-end integration scenarios
-3. **Performance Benchmarks**: Document performance characteristics
-4. **Security Audit**: Comprehensive security review documentation
-
----
-
-## 8. Documentation Coverage Summary
-
-### Excellent Coverage (100%)
-- ✅ GenAI Functions (8/8)
-- ✅ GenAI Prompt Templates (2/2)
-- ✅ GenAI Plugins (2/2)
-- ✅ Email Templates (4/4)
-- ✅ Custom Labels (24/24)
-- ✅ Permission Sets (1/1)
-
-### Perfect Coverage (100%)
-- ✅ All component types fully documented
-
-### Overall Package Documentation
-- **Total Coverage**: 64/64 = 100%
-- **Quality Rating**: A+
-- **Completeness**: Complete
-- **AI Documentation**: Exceptional
-- **Technical Depth**: Comprehensive
-
----
-
-## 9. Validation Checklist
+## 7. Validation Checklist
 
 ### Documentation Exists ✓
+- [x] README / navigation index
 - [x] Package Overview
 - [x] Apex Architecture
-- [x] GenAI Functions Documentation
-- [x] GenAI Prompt Templates Documentation
-- [x] GenAI Plugins Documentation
-- [x] Email Templates Documentation
+- [x] GenAI Functions Documentation (44/44)
+- [x] GenAI Prompt Templates Documentation (16/16)
+- [x] GenAI Plugins Documentation (11/11)
+- [x] Email Templates Documentation (19/19, +2 unreleased noted)
+- [x] Custom Labels Documentation (categorized, 404 total)
+- [x] ERD / data model documentation (7/7 ARA objects + 7 extended ATS objects)
+- [x] Platform-level Agentforce research (corrected)
 
-### Documentation Quality ✓
-- [x] Technical accuracy
-- [x] Code examples provided
-- [x] Integration patterns explained
-- [x] Error handling documented
-- [x] Best practices included
+### Verification Method
+- [x] `manifest/package.xml` read and parsed programmatically (XML, not just grep) for authoritative per-type counts
+- [x] Filesystem enumeration (`git ls-tree`) cross-checked against package.xml for GenAiFunction, GenAiPlugin, GenAiPromptTemplate, CustomObject, EmailTemplate
+- [x] Discrepancies between package.xml and filesystem reality explicitly investigated and explained (not glossed over) — see Section 1 notes
+- [x] Real GenAiFunction schema content read and verified (not assumed) for at least one representative function
+- [x] Real GenAiPlugin instruction text read and summarized (not assumed) for all 11 plugins
 
-### Documentation Gaps ✅
-- [x] All Apex classes documented
-- [x] Component count accurate
-- [x] No data model needed (uses existing objects)
-- [x] No UI components to document
+## 8. Conclusion
 
----
+This refresh replaces a fabricated 64-component baseline with a verified 818-component baseline sourced directly from `ara:manifest/package.xml` and `force-app/main/default` on `master` (`ba1083bd`). Coverage is complete at the type-count level (all 818 components are accounted for in the summary table) and full at the item level for the six component types most relevant to ARA's AI/recruiting functionality (Apex, GenAiFunction, GenAiPlugin, GenAiPromptTemplate, EmailTemplate, CustomObject/ERD). Known gaps (LWC-level detail, full field dictionary, Flow internals, verbatim prompt text, test-class enumeration) are explicitly disclosed in Section 6 rather than silently omitted, consistent with the correction this report exists to make versus the prior version's unfounded "100% coverage" claim.
 
-## 10. Conclusion
-
-The ARA package documentation demonstrates exceptional quality with complete 100% coverage. The documentation particularly excels in covering the AI-powered components, which are the heart of the package. All components are thoroughly documented with clear examples and integration patterns.
-
-**Key Strengths:**
-1. Comprehensive AI component documentation
-2. Excellent technical depth and examples
-3. Clear integration patterns and workflows
-4. Strong email automation documentation
-
-**Recommended Enhancements:**
-1. Add automated validation against package.xml
-2. Create visual component dependency diagrams
-3. Include performance benchmarks
-
-**Final Assessment:** The ARA package documentation is production-ready with complete coverage. The AI-first approach is exceptionally well-documented and provides clear implementation guidance for developers and administrators.
-
----
-
-*Report Generated: [Current Date]*
-*Package Version: 63.0*
-*Total Components Verified: 64*
+**Confidence in this report's own accuracy**: high for component counts and real metadata content (verified via direct XML/file reads against `master`), moderate for the small set of filesystem/package.xml discrepancies noted in Section 1 (explained but not forensically traced to a specific commit/PR), and explicitly incomplete (by design, and disclosed) for the gaps listed in Section 6.

@@ -1,119 +1,61 @@
-# ARA (Asymbl Recruiting Agent)
+# ARA (Asymbl Copilot) — Documentation Index
 
 ## Overview
-ARA (Asymbl Recruiting Agent) is an AI-powered recruiting automation solution built on Salesforce Agentforce. This package streamlines and enhances the recruiting process through intelligent automation, AI-driven candidate matching, and seamless integration with Salesforce's recruiting ecosystem.
 
-## Purpose
-The ARA package leverages artificial intelligence to automate repetitive recruiting tasks, improve candidate experience, and help recruiters make data-driven decisions. By utilizing Salesforce Agentforce capabilities, ARA provides intelligent automation for candidate screening, interview scheduling, communication management, and recruiting analytics.
+**ARA** (package label **Asymbl Copilot**, namespace `bpats`) is a Salesforce managed package that adds AI-powered recruiting capabilities to the ASYMBL-ATS platform using Salesforce Agentforce / Einstein GenAI. ARA is an **add-on dependent package** — it ships no standalone data model of its own beyond a small set of supporting objects; its GenAI functions, Apex, and Lightning components operate primarily on ATS base objects (`Job__c`, `ATS_Applicant__c`, `Contact`, `Interview__c`, `Interview_Feedback__c`, `Job_Board_Application__c`) layered with its own metadata configuration objects.
 
-## Package Components Overview
+This documentation set was regenerated on **2026-10-30** by direct inspection of the `ara` repository's `master` branch (commit `ba1083bd605581d3da5ca881a9e10db9e86fb878`, 2026-09-11), superseding a prior July 2025 documentation set that was found to be materially fabricated rather than merely outdated (see `ARA_ULTRATHINK_Verification_Report.md` for the verification matrix and `ARA_Package_Overview.md` for notes on what was discarded).
 
-### 📦 Component Summary
-- **25 Apex Classes** - Core business logic and automation
-- **24 Custom Labels** - Configurable text and messages
-- **4 Email Templates** - Automated communication templates
-- **8 GenAI Functions** - AI-powered recruiting functions
-- **2 GenAI Prompt Templates** - Structured AI prompts for recruiting tasks
-- **2 GenAI Plugins** - Extended AI capabilities
-- **1 Permission Set** - Access control configuration
+## Component Summary (verified against `manifest/package.xml`, 818 total components)
 
-## 📚 Documentation Navigation
+| Component Type | Count |
+|---|---|
+| ApexClass | 174 |
+| ApexTrigger | 1 |
+| CustomLabel | 388 |
+| CustomLabels (container) | 1 |
+| EmailTemplate | 19 |
+| GenAiFunction | 44 |
+| GenAiPromptTemplate | 16 |
+| GenAiPlugin | 11 |
+| Flow | 2 |
+| PermissionSet | 3 |
+| CustomObject (incl. Custom Metadata Types) | 7 |
+| CustomField | 85 |
+| CustomMetadata (records) | 22 |
+| Layout | 7 |
+| LightningComponentBundle | 17 |
+| LightningTypeBundle | 5 |
+| RemoteSiteSetting | 1 |
+| CustomTab | 1 |
+| FlexiPage | 1 |
+| QuickAction | 1 |
+| StaticResource | 1 |
+| ReportType | 2 |
+| Report | 3 |
+| CustomNotificationType | 2 |
+| CustomPermission | 1 |
+| BotTemplate | 1 |
+| GenAiPlannerBundle | 1 |
+| ListView | 1 |
+| **TOTAL** | **818** |
 
-### 🤖 AI-Powered Components
+## Documentation Files in This Folder
 
-#### GenAI Functions
-- [Function Overview](./docs/genai-functions/overview.md)
-- [Candidate Screening Function](./docs/genai-functions/candidate-screening.md)
-- [Resume Parser Function](./docs/genai-functions/resume-parser.md)
-- [Interview Scheduler Function](./docs/genai-functions/interview-scheduler.md)
-- [Skill Matcher Function](./docs/genai-functions/skill-matcher.md)
-- [Job Description Analyzer Function](./docs/genai-functions/job-description-analyzer.md)
-- [Candidate Ranking Function](./docs/genai-functions/candidate-ranking.md)
-- [Communication Assistant Function](./docs/genai-functions/communication-assistant.md)
-- [Feedback Analyzer Function](./docs/genai-functions/feedback-analyzer.md)
+- **README.md** — this file
+- **ARA_Package_Overview.md** — executive summary, true architecture, capability areas
+- **ARA_Apex_Architecture.md** — full Apex class inventory grouped by functional domain
+- **ARA_Custom_Labels_Documentation.md** — label inventory and categorization (404 labels: 398 `ARA`, 6 `CP`)
+- **ARA_Email_Templates_Documentation.md** — all 19 email templates (2 folders: `ARA`, `ARA_BaseEmailTemplates`)
+- **ARA_GenAI_Functions_Documentation.md** — all 44 GenAiFunctions with real invocationTarget/schema data
+- **ARA_GenAI_Plugins_Documentation.md** — all 11 GenAiPlugins (Agentforce Topics) with real function groupings and instructions
+- **ARA_GenAI_Prompt_Templates_Documentation.md** — all 16 GenAiPromptTemplates
+- **Agentforce_Components_Research.md** — platform-level reference on GenAiFunction/GenAiPromptTemplate/GenAiPlugin metadata (retained, lightly corrected — this file was general Salesforce platform research, not ARA-specific fabrication)
+- **ERD_ARA_Recruiting_Objects.md** — ERD for ARA's 7 custom objects and their relationships to ATS base objects
+- **ARA_ULTRATHINK_Verification_Report.md** — real component-count verification matrix vs. documentation coverage
 
-#### GenAI Prompt Templates
-- [Prompt Templates Overview](./docs/genai-prompts/overview.md)
-- [Candidate Evaluation Prompt](./docs/genai-prompts/candidate-evaluation-prompt.md)
-- [Interview Question Generator Prompt](./docs/genai-prompts/interview-question-generator-prompt.md)
+## Key Correction Notice
 
-#### GenAI Plugins
-- [Plugins Overview](./docs/genai-plugins/overview.md)
-- [Recruiting Intelligence Plugin](./docs/genai-plugins/recruiting-intelligence-plugin.md)
-- [Candidate Insights Plugin](./docs/genai-plugins/candidate-insights-plugin.md)
+The documentation previously in this folder (dated ~2025-07-10) significantly **misrepresented** the ARA package: it described a 64-component package built on TensorFlow/Kubernetes/Kafka/GraphQL with fictional REST APIs, SOC 2/ISO 27001 certifications, and custom objects (`Job_Application__c`, `AI_Metrics__c`, `Plugin_Audit__c`) that do not exist anywhere in this codebase. That content has been discarded in full. The current set reflects only what is verifiably present in `ara:manifest/package.xml` and `force-app/main/default` on `master` as of commit `ba1083bd`.
 
-### 💻 Technical Components
-
-#### Apex Classes
-- [Apex Classes Overview](./docs/apex-classes/overview.md)
-- [Core Classes](./docs/apex-classes/core-classes.md)
-- [Utility Classes](./docs/apex-classes/utility-classes.md)
-- [Service Classes](./docs/apex-classes/service-classes.md)
-- [Trigger Handlers](./docs/apex-classes/trigger-handlers.md)
-- [Batch Classes](./docs/apex-classes/batch-classes.md)
-- [Integration Classes](./docs/apex-classes/integration-classes.md)
-
-#### Email Templates
-- [Email Templates Overview](./docs/email-templates/overview.md)
-- [Candidate Welcome Template](./docs/email-templates/candidate-welcome.md)
-- [Interview Invitation Template](./docs/email-templates/interview-invitation.md)
-- [Application Status Update Template](./docs/email-templates/application-status-update.md)
-- [Recruiter Notification Template](./docs/email-templates/recruiter-notification.md)
-
-#### Custom Labels
-- [Custom Labels Overview](./docs/custom-labels/overview.md)
-- [UI Labels](./docs/custom-labels/ui-labels.md)
-- [Error Messages](./docs/custom-labels/error-messages.md)
-- [Configuration Labels](./docs/custom-labels/configuration-labels.md)
-
-#### Permission Set
-- [ARA Permission Set Documentation](./docs/permission-set/ara-permission-set.md)
-
-### 🚀 Getting Started
-- [Installation Guide](./docs/getting-started/installation.md)
-- [Configuration Guide](./docs/getting-started/configuration.md)
-- [Quick Start Tutorial](./docs/getting-started/quick-start.md)
-- [Best Practices](./docs/getting-started/best-practices.md)
-
-### 🔧 Administration
-- [Admin Guide](./docs/admin/admin-guide.md)
-- [Security Settings](./docs/admin/security-settings.md)
-- [Maintenance Guide](./docs/admin/maintenance.md)
-- [Troubleshooting](./docs/admin/troubleshooting.md)
-
-### 📖 User Guide
-- [Recruiter Guide](./docs/user-guide/recruiter-guide.md)
-- [Manager Guide](./docs/user-guide/manager-guide.md)
-- [Administrator Guide](./docs/user-guide/administrator-guide.md)
-
-### 🔗 Integration
-- [Salesforce Integration](./docs/integration/salesforce-integration.md)
-- [External Systems Integration](./docs/integration/external-systems.md)
-- [API Documentation](./docs/integration/api-documentation.md)
-
-### 📊 Reports and Analytics
-- [Recruiting Analytics](./docs/reports/recruiting-analytics.md)
-- [AI Performance Metrics](./docs/reports/ai-performance-metrics.md)
-- [Custom Reports](./docs/reports/custom-reports.md)
-
-### 🔄 Release Notes
-- [Version History](./docs/release-notes/version-history.md)
-- [Upgrade Guide](./docs/release-notes/upgrade-guide.md)
-
-## 🛠️ Development Resources
-- [Developer Guide](./docs/development/developer-guide.md)
-- [Code Standards](./docs/development/code-standards.md)
-- [Testing Guide](./docs/development/testing-guide.md)
-- [Deployment Guide](./docs/development/deployment-guide.md)
-
-## 📞 Support
-- [FAQ](./docs/support/faq.md)
-- [Known Issues](./docs/support/known-issues.md)
-- [Contact Support](./docs/support/contact.md)
-
-## 📄 License
-[License Information](./LICENSE.md)
-
----
-
-*This documentation is maintained as part of the Asymbl Recruiting Agent (ARA) package. For the latest updates and contributions, please visit our [GitHub repository](https://github.com/shivasymbl/PackageDocumenation).*
+Most significant net-new coverage: a complete **Voice Interview / Voice Agent subsystem** (7 custom objects, voice screening/scheduling/rescheduling GenAiPlugins, voice-related Apex batches and webhook handlers, voice-specific email templates and custom notification types) that did not appear anywhere in the prior documentation.
