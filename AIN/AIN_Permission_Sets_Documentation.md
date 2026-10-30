@@ -1,404 +1,52 @@
 # AIN Permission Sets Documentation
 
-## Overview
-
-The AIN package includes 3 permission sets that provide role-based access control for the integration platform. These permission sets follow the principle of least privilege while ensuring users have appropriate access to perform their responsibilities.
-
-## Permission Set Summary
-
-| Permission Set | API Name | License | Purpose | Target Users |
-|---|---|---|---|---|
-| **Asymbl Integration Admin** | AIN_Admin | Salesforce | Full administrative access | System Administrators, Integration Managers |
-| **Beeline Admin** | AIN_Beeline_Admin | Salesforce | VMS-specific administration | VMS Coordinators, Recruiting Ops |
-| **Integration Guest User** | AIN_IN_Integration_Guest_User | Guest User | API endpoint access | External Systems, Webhooks |
-
-## Detailed Permission Set Documentation
-
-### 1. AIN_Admin (Asymbl Integration Admin)
-
-**Purpose**: Provides complete administrative access to all AIN integration features, configuration, and monitoring capabilities.
-
-#### Object Permissions
-
-| Object | Read | Create | Edit | Delete | View All | Modify All |
-|---|---|---|---|---|---|---|
-| Job__c | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| ATS_Applicant__c | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Contact | ✓ | ✓ | ✓ | ✗ | ✓ | ✗ |
-| Account | ✓ | ✗ | ✓ | ✗ | ✓ | ✗ |
-| Activity_Log__c | ✓ | ✓ | ✗ | ✓ | ✓ | ✗ |
-
-#### Field Permissions
-
-**Job__c Fields**:
-- AIN_Activity_History__c: Read, Edit
-- AIN_Indeed_Apply__c: Read, Edit
-- AIN_Is_Synced__c: Read, Edit
-- AIN_Source_Posting_Id__c: Read, Edit
-- AIN_Sync_This_Record__c: Read, Edit
-
-**ATS_Applicant__c Fields**:
-- AIN_BE_Candidate_Id__c: Read, Edit
-- AIN_BE_Worker_Id__c: Read, Edit
-
-#### Custom Metadata Access
-- AIN_Integration_Credentials__mdt: Read, Create, Edit, Delete
-- AIN_Job_Mapping__mdt: Read, Create, Edit, Delete
-- AIN_Job_Board_Mapping__mdt: Read, Create, Edit, Delete
-- AIN_Indeed_Apply_Mapping__mdt: Read, Create, Edit, Delete
-- AIN_Vms_Job_Mapping__mdt: Read, Create, Edit, Delete
-- AIN_Vms_Job_Board_Mapping__mdt: Read, Create, Edit, Delete
-
-#### Apex Class Access
-- All 41 AIN Apex classes: Enabled
-- Key classes:
-  - AIN_BeelineCalloutServices
-  - AIN_IndeedCalloutService
-  - AIN_MetadataService
-  - All controller classes
-
-#### Tab Visibility
-- Asymbl_Integration_Admin: Default On
-
-#### System Permissions
-- API Enabled: ✓
-- View Setup and Configuration: ✓
-- Customize Application: ✓
-- Manage Custom Metadata: ✓
-- Author Apex: ✓
-- Modify Metadata: ✓
-- View All Data: ✓
-- Modify All Data: ✗
-
-#### Lightning Component Access
-- All 16 AIN Lightning components: Enabled
-
----
-
-### 2. AIN_Beeline_Admin (Beeline Admin)
-
-**Purpose**: Provides focused access for users managing Beeline VMS integrations without full system administration privileges.
-
-#### Object Permissions
-
-| Object | Read | Create | Edit | Delete | View All | Modify All |
-|---|---|---|---|---|---|---|
-| Job__c | ✓ | ✗ | ✓ | ✗ | ✓ | ✗ |
-| ATS_Applicant__c | ✓ | ✓ | ✓ | ✗ | ✓ | ✗ |
-| Contact | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
-| Account | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Activity_Log__c | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
-
-#### Field Permissions
-
-**Job__c Fields**:
-- AIN_Activity_History__c: Read
-- AIN_Indeed_Apply__c: Read
-- AIN_Is_Synced__c: Read
-- AIN_Source_Posting_Id__c: Read
-- AIN_Sync_This_Record__c: No Access
-
-**ATS_Applicant__c Fields**:
-- AIN_BE_Candidate_Id__c: Read, Edit
-- AIN_BE_Worker_Id__c: Read, Edit
-
-#### Custom Metadata Access
-- AIN_Integration_Credentials__mdt: Read (Beeline record only)
-- AIN_Vms_Job_Mapping__mdt: Read
-- AIN_Vms_Job_Board_Mapping__mdt: Read
-- Other metadata types: No Access
-
-#### Apex Class Access
-- AIN_BeelineCalloutServices: Enabled
-- AIN_BeelineAuthSettingController: Enabled
-- AIN_BeelineObjectMappingController: Enabled
-- AIN_PublishJobQuickActionController: Enabled
-- AIN_Utility: Enabled
-- AIN_Constants: Enabled
-- Other classes: No Access
-
-#### Tab Visibility
-- Asymbl_Integration_Admin: Default Off
-
-#### System Permissions
-- API Enabled: ✓
-- View Setup and Configuration: ✗
-- Run Reports: ✓
-- Export Reports: ✓
-- View Dashboards: ✓
-
-#### Lightning Component Access
-- ainBeelineAuthenticationContainer: Enabled
-- ainBeelineAuthenticationSetting: Enabled
-- ainActivityTimeline: Enabled
-- ainJobPortalCard: Enabled
-- ainErrorDetailModal: Enabled
-- Other components: No Access
-
----
-
-### 3. AIN_IN_Integration_Guest_User (Integration Guest User)
-
-**Purpose**: Provides minimal access required for external systems to interact with Salesforce via REST APIs and webhooks.
-
-#### Object Permissions
-
-| Object | Read | Create | Edit | Delete | View All | Modify All |
-|---|---|---|---|---|---|---|
-| Job__c | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| ATS_Applicant__c | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Contact | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Account | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-
-#### Field Permissions
-
-**Job__c Fields**:
-- AIN_Source_Posting_Id__c: Read
-- AIN_Is_Synced__c: Read
-- Other AIN fields: No Access
-
-**ATS_Applicant__c Fields**:
-- AIN_BE_Candidate_Id__c: Read
-- AIN_BE_Worker_Id__c: Read
-
-**Contact Fields** (Standard):
-- FirstName: Read, Edit
-- LastName: Read, Edit
-- Email: Read, Edit
-- Phone: Read, Edit
-
-#### Apex Class Access
-- AIN_IndeedApplyRestResource: Enabled
-- AIN_RequestParser: Enabled
-- AIN_JsonFlattener: Enabled
-- Other classes: No Access
-
-#### REST Endpoint Access
-- /services/apexrest/ain/indeed/apply: Enabled
-- Other endpoints: No Access
-
-#### System Permissions
-- API Enabled: ✓
-- View All Data: ✗
-- Modify All Data: ✗
-- Create Audit Fields: ✗
-
-## Permission Set Assignment Strategy
-
-### Role-Based Assignment
-
-| User Role | Recommended Permission Set | Justification |
-|---|---|---|
-| System Administrator | AIN_Admin | Full configuration and monitoring |
-| Integration Manager | AIN_Admin | Manage all integrations |
-| VMS Coordinator | AIN_Beeline_Admin | Beeline-specific operations |
-| Recruiting Operations | AIN_Beeline_Admin | Candidate management |
-| External Systems | AIN_IN_Integration_Guest_User | API access only |
-| Standard Users | None | View-only via sharing |
-
-### Assignment Best Practices
-
-1. **Principle of Least Privilege**
-   - Assign minimum required permissions
-   - Regular access reviews
-   - Remove unused assignments
-
-2. **Segregation of Duties**
-   - Separate configuration from usage
-   - Different admins for different systems
-   - Audit trail for changes
-
-3. **Guest User Security**
-   - Assign only to site guest users
-   - Monitor API usage
-   - Implement IP restrictions
-
-## Security Model
-
-### Data Access Levels
-
-```
-AIN_Admin (Full Access)
-    ↓
-AIN_Beeline_Admin (VMS Operations)
-    ↓
-Standard Users (View via Sharing)
-    ↓
-AIN_Guest_User (API Only)
-```
-
-### Field-Level Security Matrix
-
-| Field | Admin | Beeline Admin | Guest | Standard User |
-|---|---|---|---|---|
-| Credentials | R/W | R | - | - |
-| Sync Controls | R/W | - | - | - |
-| External IDs | R/W | R/W | R | R |
-| Activity Logs | R/W | R | - | R |
-
-### Apex Class Security
-
-```apex
-// Example: Class-level security check
-public with sharing class AIN_AdminService {
-    public static void performAdminAction() {
-        if (!FeatureManagement.checkPermission('AIN_Admin')) {
-            throw new AIN_SecurityException('Insufficient privileges');
-        }
-        // Admin action logic
-    }
-}
-```
-
-## Sharing Rules Integration
-
-### Recommended Sharing Rules
-
-1. **Job Integration Sharing**
-   - Share Job__c records with AIN_Beeline_Admin users
-   - Criteria: AIN_Is_Synced__c = true
-   - Access Level: Read/Write
-
-2. **Applicant VMS Sharing**
-   - Share ATS_Applicant__c with VMS coordinators
-   - Criteria: AIN_BE_Candidate_Id__c != null
-   - Access Level: Read/Write
-
-3. **Activity Log Visibility**
-   - Share Activity_Log__c with all internal users
-   - Criteria: Related to Job or Applicant
-   - Access Level: Read Only
-
-## Permission Set Groups
-
-### Recommended Groups
-
-1. **Integration Administrators**
-   - Includes: AIN_Admin
-   - Additional: Modify All Data, View Setup
-   - Purpose: Complete system control
-
-2. **VMS Operators**
-   - Includes: AIN_Beeline_Admin
-   - Additional: Run Reports, Export Reports
-   - Purpose: Operational management
-
-3. **API Integration Users**
-   - Includes: AIN_IN_Integration_Guest_User
-   - Additional: API Enabled
-   - Purpose: System integration
-
-## Audit and Compliance
-
-### Permission Usage Tracking
-
-```apex
-// Track permission usage
-public static void logPermissionUsage(String action) {
-    Permission_Usage__c usage = new Permission_Usage__c();
-    usage.User__c = UserInfo.getUserId();
-    usage.Action__c = action;
-    usage.Permission_Set__c = getCurrentPermissionSet();
-    usage.Timestamp__c = DateTime.now();
-    insert usage;
-}
-```
-
-### Compliance Checks
-
-1. **Quarterly Reviews**
-   - Validate active assignments
-   - Remove inactive users
-   - Check for privilege creep
-
-2. **Access Certification**
-   - Manager approval required
-   - Annual recertification
-   - Document justification
-
-3. **Audit Reports**
-   - Permission set assignments
-   - High-privilege usage
-   - Failed access attempts
-
-## Implementation Guidelines
-
-### Initial Setup
-
-1. **Deploy Permission Sets**
-   ```bash
-   sfdx force:source:deploy -m PermissionSet:AIN_Admin,AIN_Beeline_Admin,AIN_IN_Integration_Guest_User
-   ```
-
-2. **Assign to Users**
-   ```apex
-   PermissionSetAssignment psa = new PermissionSetAssignment();
-   psa.AssigneeId = userId;
-   psa.PermissionSetId = permissionSetId;
-   insert psa;
-   ```
-
-3. **Configure Sharing Rules**
-   - Create via Setup UI
-   - Test with different users
-   - Document exceptions
-
-### Testing Strategy
-
-1. **Positive Testing**
-   - Verify expected access
-   - Test all features
-   - Validate data visibility
-
-2. **Negative Testing**
-   - Confirm access restrictions
-   - Test boundary conditions
-   - Verify error handling
-
-3. **Integration Testing**
-   - Test with actual users
-   - Verify API access
-   - Check performance impact
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Insufficient Privileges" Error**
-   - Check permission set assignment
-   - Verify object/field permissions
-   - Review sharing rules
-
-2. **Missing Tab Access**
-   - Confirm tab visibility settings
-   - Check user's app assignment
-   - Verify license compatibility
-
-3. **API Access Denied**
-   - Validate API Enabled permission
-   - Check connected app settings
-   - Review IP restrictions
-
-### Debug Queries
-
-```apex
-// Check user's permission sets
-SELECT PermissionSet.Name 
-FROM PermissionSetAssignment 
-WHERE AssigneeId = :userId
-
-// Verify field access
-SELECT Field, PermissionsRead, PermissionsEdit 
-FROM FieldPermissions 
-WHERE ParentId IN (SELECT Id FROM PermissionSet WHERE Name LIKE 'AIN%')
-```
-
-## Summary
-
-The three AIN permission sets provide a comprehensive security model that:
-
-1. **Enables Proper Access**: Users have necessary permissions
-2. **Maintains Security**: Follows least privilege principle
-3. **Supports Compliance**: Audit trail and access reviews
-4. **Scales Effectively**: Clear role-based model
-5. **Integrates Safely**: Secure API access for external systems
+## Overview — Material Correction
+
+**No static `PermissionSet` metadata ships in the AIN package.** A repo-wide search of `force-app/main/default/` on `master` confirms there is no `permissionsets/` directory at all. The three permission sets previously documented (`AIN_Admin`, `AIN_Beeline_Admin`, `AIN_IN_Integration_Guest_User`) as deployed `.permissionset-meta.xml` files **do not exist** — that entire prior documentation (object/field permission tables, tab visibility, sharing rules, permission set groups) was fabricated and has been fully replaced below with the verified, actual model.
+
+## The Real Model: Runtime-Provisioned Permission Sets
+
+AIN provisions access control **programmatically at install/runtime** via `AIN_PostInstallScript.onInstall()` (which calls its own `createPermissionSet()`) and the companion `AIN_PermissionSetController` (callable later, e.g. when new objects/fields are added, to re-provision/update permissions without a new package version). Both classes contain near-identical logic.
+
+### The Four Permission Sets Created
+
+| API Name | Label (from Custom Label) | `PERMISSION_SET_MAP` constant | Intended audience |
+|---|---|---|---|
+| `AIN_Admin_Clone` | `System.Label.AIN_Admin_User_Permission_Set_Label` | `AIN_Constants.AIN_ADMIN_PERMISSIONSET` | Full admin — edit + delete + view/modify all on AIN-managed objects |
+| `AIN_User_Clone` | `System.Label.AIN_User_Permission_Set_Label` | `AIN_Constants.AIN_USER_PERMISSIONSET` | Standard internal users — read/create/edit (no delete, no view-all) |
+| `AIN_Guest_Clone` | `System.Label.AIN_Guest_User_Permission_Set_Label` | `AIN_Constants.AIN_GUEST_PERMISSIONSET` | Guest/site users hitting public-facing endpoints (e.g. the screening question URL page); `PermissionsSendCustomNotifications`/`PermissionsRunFlow` explicitly set `false` |
+| `AIN_Api_User_Clone` | `System.Label.AIN_Api_User_Permission_Set_Label` | `AIN_Constants.AIN_API_USER_PERMISSIONSET` | Integration/API users — edit + view-all but **not** delete, and excluded from the Admin tab |
+
+### What Gets Provisioned, Per Permission Set
+
+`assignPermissionsToPermissionSet()` builds, for each of the 4 permission sets:
+
+1. **Object Permissions** (`assignObjectToPermissionSet`) — Read+Create always; Edit for `AIN_User_Clone`/`AIN_Admin_Clone`/`AIN_Api_User_Clone`; Delete + ViewAllRecords only for `AIN_Admin_Clone` (and ViewAllRecords for `AIN_Api_User_Clone`), on this object set:
+   - `Job__c`, `ATS_Applicant__c`, `Job_Board_Application__c`, `ATS_Log__c` (excluded from object permission grants via `OBJECT_PERMISSION_TO_EXCULDE`, i.e. logging object is never object-permissioned here), `AIN_External_Custom_Fields__c`, `AIN_Webhook_Event__e` (platform event — read/create only, no edit, per `eventList` exclusion), `AIN_Webhook_Request__c`, `AIN_Candidate_Question__c`, `AIN_Question_Assignment__c`, `AIN_Candidate_Response__c`.
+2. **Field Permissions** (`assignFieldToPermissionSet`) — dynamically discovered via `Schema.describe()` per object (excludes augmented/person-account/address compound-field suffixes `__s`/`__pc`/`__ps`), not a hand-maintained list. Read always; Edit unless the field is non-updatable (formula/autonumber) or the permission set is `AIN_User_Clone` against a configured read-only object (`AIN_USER_READ_ONLY_OBJECT_LIST`, currently empty).
+3. **Custom Metadata / Custom Setting Access** (`assignMetaDataAndCustomSettingToPermissionSet`) — grants `CustomEntityDefinition` setup-entity access to all 10 CMDT types (`customMetaDataList`: Integration Credentials, Indeed Apply Mapping, Job Mapping, Job Board Mapping, VMS Job Mapping, VMS Job Board Mapping, Webhook Setup, Default Question Template, Disposition Sync Config, Disposition Value Map).
+4. **Apex Class Access** (`assignApexClassToPermissionSet`) — every class matching `Name LIKE 'AIN%'`, plus 4 base-package utility classes (`ATS_DataUtility`, `ATS_LogHandler`, `ATS_SecureDml`, `ATS_Utility`).
+5. **Apex Page Access** (`assignApexPageToPermissionSet`) — `AIN_ScreeningQuestionURLPage`, granted to all permission sets **except** `AIN_Api_User_Clone`.
+6. **Named Credential Principal Access** (`assignNamedCredentialPrincipalToPermissionSet`) — grants `ExternalCredentialParameter` setup-entity access for the `AIN_AWS_Indeed_Integration` external credential's principals, via `ConnectApi.NamedCredentials.getExternalCredential()` (in `AIN_PostInstallScript`) and a Tooling API query fallback (`queryExternalCredentialParameters`, used by `AIN_PermissionSetController`).
+7. **Tab Settings** (`assignTabSetToPermissionSet`, `@future`) — grants `DefaultOn` visibility to tabs for the managed object set, plus the `Asymbl_Integration_Admin` custom tab for `AIN_Admin_Clone` only (`AIN_User_Clone` explicitly excludes it via `OBJECT_TABS_TO_EXCLUDE_FOR_USER`).
+
+### Error Handling
+
+Both classes enqueue a nested `Queueable` (`ErrorLogQueue`) on any exception, logging via `bpats.ATS_LogHandler.createErrorLog` (controller) or a direct `ATS_Log__c` insert (`AIN_PostInstallScript`, since the install context may not have access to the base package's logger in all org states).
+
+### `updateObjectPermission(objectName)`
+
+`AIN_PermissionSetController` exposes a re-provisioning entry point: callers (e.g. when a new custom object needs to be covered) can call `updateObjectPermission('Some_Object__c')`, which adds the object to `sObjectList` and re-runs `createPermissionSet()`. Success is determined by checking that all 4 permission sets were returned (`permissionSetList.size() == 4`).
+
+## Why This Matters for Documentation/Support
+
+- There is **no Setup UI permission set record to show an admin** labeled "Asymbl Integration Admin" or similar — admins will see `AIN_Admin_Clone`, `AIN_User_Clone`, `AIN_Guest_Clone`, `AIN_Api_User_Clone` in Setup, with labels pulled from custom labels at creation time.
+- Because permissions are recomputed from live schema describes (not a static XML diff), **newly added AIN fields/objects are automatically covered** the next time `createPermissionSet()`/`updateObjectPermission()` runs — there is no risk of a field being "missing from the permission set" the way there would be with hand-maintained static metadata, provided the post-install/update path is invoked.
+- Assigning AIN access to a user means assigning one of these four permission sets via standard Permission Set Assignment — there are no permission set *groups*, sharing rules, or "Permission_Usage__c" audit object shipped with this package (all fabricated in prior documentation).
+
+## Corrections vs. prior documentation
+
+- `AIN_Admin`, `AIN_Beeline_Admin`, `AIN_IN_Integration_Guest_User` as static deployed permission sets **do not exist**. The real names are `AIN_Admin_Clone`, `AIN_User_Clone`, `AIN_Guest_Clone`, `AIN_Api_User_Clone`, and they are **created by Apex at install/runtime**, not retrieved as `.permissionset-meta.xml` source.
+- There is no `Activity_Log__c` object (prior docs referenced permissions on it) — the actual logging object from the base package is `ATS_Log__c`, and it is explicitly *excluded* from object-permission assignment in both provisioning classes.
+- There is no `Permission_Usage__c` tracking object, no sharing-rule configuration, and no permission-set-group recommendation shipped or implied by this package's metadata — all of that content in the prior documentation was invented.
+- The `FeatureManagement.checkPermission('AIN_Admin')` code sample in prior documentation does not correspond to any real custom permission in this package and has been removed.

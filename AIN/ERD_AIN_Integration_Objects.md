@@ -2,248 +2,234 @@
 
 ## Overview
 
-This ERD illustrates the relationships between integration objects, metadata configurations, and Salesforce standard/custom objects within the AIN package.
+This ERD reflects the verified object model on `asymbl-integration` branch `master` (commit `3d45738`, 2026-10-22): 6 true custom objects/platform event owned by AIN, 10 custom metadata types, and 5 extended ATS/standard base objects. It supersedes the prior ERD, which covered only `Job__c`, `ATS_Applicant__c`, `Contact`, and the 6 original field-mapping CMDTs — entirely omitting the Candidate Question/Response/Assignment subsystem, the Webhook Request/Event subsystem, External Custom Fields, RedDot, and the Disposition Sync CMDTs.
 
 ## Entity Relationship Diagram
 
 ```mermaid
 erDiagram
-    JOB ||--o{ AIN_JOB_MAPPING : "configured by"
-    JOB ||--o{ AIN_VMS_JOB_MAPPING : "configured by"
-    JOB ||--o{ JOB_ACTIVITY : "tracks"
-    JOB ||--o{ ATS_APPLICANT : "receives"
-    
-    ATS_APPLICANT ||--o{ AIN_JOB_BOARD_MAPPING : "configured by"
-    ATS_APPLICANT ||--o{ AIN_VMS_JOB_BOARD_MAPPING : "configured by"
-    ATS_APPLICANT }o--|| CONTACT : "links to"
-    
-    CONTACT ||--o{ APPLICATION_ACTIVITY : "has"
-    
-    AIN_INTEGRATION_CREDENTIALS ||--|| EXTERNAL_SYSTEM : "authenticates"
-    
-    AIN_JOB_MAPPING ||--|| INDEED_API : "maps to"
-    AIN_VMS_JOB_MAPPING ||--|| BEELINE_API : "maps to"
-    AIN_JOB_BOARD_MAPPING ||--|| INDEED_APPLY : "processes"
-    AIN_VMS_JOB_BOARD_MAPPING ||--|| BEELINE_CANDIDATE : "submits"
-    AIN_INDEED_APPLY_MAPPING ||--|| INDEED_APPLY : "configures"
-    
+    %% Core ATS Objects (extended by AIN) - Blue
+    JOB ||--o{ EXTERNAL_CUSTOM_FIELDS : "has VMS custom fields"
+    JOB ||--o{ QUESTION_ASSIGNMENT : "assigns questions"
+    JOB ||--o{ CANDIDATE_RESPONSE : "receives answers for"
+    JOB ||--o{ JOB_BOARD_APPLICATION : "receives"
+    JOB_BOARD_APPLICATION }o--|| CONTACT : "links to"
+    JOB_BOARD_APPLICATION ||--o{ CANDIDATE_RESPONSE : "captures"
+
+    %% Question Builder Subsystem - Purple
+    CANDIDATE_QUESTION ||--o{ QUESTION_ASSIGNMENT : "assigned via"
+    CANDIDATE_QUESTION ||--o{ CANDIDATE_QUESTION : "parent/child (hierarchical)"
+    CANDIDATE_QUESTION ||--o{ CANDIDATE_RESPONSE : "answered by"
+    CANDIDATE_RESPONSE ||--o{ CANDIDATE_RESPONSE : "parent/child (hierarchical)"
+    CANDIDATE_RESPONSE }o--|| CONTACT : "submitted by"
+
+    %% Webhook Durability Subsystem - Purple
+    WEBHOOK_REQUEST }o..o{ WEBHOOK_EVENT : "published as (async path)"
+
+    %% Metadata Configuration - Green
+    JOB ||--o{ JOB_MAPPING : "configured by"
+    JOB ||--o{ VMS_JOB_MAPPING : "configured by"
+    JOB_BOARD_APPLICATION ||--o{ JOB_BOARD_MAPPING : "configured by"
+    JOB_BOARD_APPLICATION ||--o{ VMS_JOB_BOARD_MAPPING : "configured by"
+    ATS_APPLICANT ||--o{ DISPOSITION_SYNC_CONFIG : "configured by"
+    ATS_APPLICANT ||--o{ VMS_JOB_BOARD_MAPPING : "configured by"
+    CANDIDATE_QUESTION ||--o{ DEFAULT_QUESTION_TEMPLATE : "seeded from"
+    INTEGRATION_CREDENTIALS ||--|| EXTERNAL_SYSTEM : "authenticates"
+
     JOB {
         string Id PK
         string Name
         string AIN_Source_Posting_Id__c
+        string AIN_BE_Job_Id__c
         boolean AIN_Sync_This_Record__c
         boolean AIN_Is_Synced__c
         string AIN_Activity_History__c
+        string AIN_Posting_Channel_History__c
+        string AIN_Posting_Locations__c
         boolean AIN_Indeed_Apply__c
+        string AIN_Posting_URL__c
     }
-    
+
     ATS_APPLICANT {
         string Id PK
-        string Name
         string AIN_BE_Candidate_Id__c
-        string AIN_BE_Worker_Id__c
-        string Contact__c FK
-        string Job__c FK
+        string AIN_BE_Candidate_Status__c
+        boolean AIN_Is_Sync_To_VMS__c
+        boolean AIN_Sync_This_To_VMS__c
+        boolean AIN_Is_Synced__c
+        string AIN_Failure_Reasons__c
     }
-    
+
+    JOB_BOARD_APPLICATION {
+        string Id PK
+        boolean AIN_Is_Synced__c
+        string AIN_Source__c
+        string AIN_Indeed_Apply_Id__c
+        string AIN_Failure_Reasons__c
+    }
+
     CONTACT {
         string Id PK
         string FirstName
         string LastName
         string Email
-        string Phone
+        string AIN_BE_Worker_Id__c FK
     }
-    
-    AIN_INTEGRATION_CREDENTIALS {
+
+    CANDIDATE_QUESTION {
+        string Id PK
+        string AIN_External_ID__c UK
+        string AIN_Question__c
+        string AIN_Category__c
+        string AIN_Data_Type__c
+        string AIN_Options_JSON__c
+        string AIN_Conditional_Rules_JSON__c
+        string AIN_Parent_Question__c FK
+        boolean AIN_Is_Pre_Selected__c
+        boolean AIN_isDefault__c
+    }
+
+    QUESTION_ASSIGNMENT {
+        string Id PK
+        string AIN_Job__c FK
+        string AIN_Candidate_Question__c FK
+        boolean AIN_Is_Default__c
+        boolean AIN_Is_Required__c
+    }
+
+    CANDIDATE_RESPONSE {
+        string Id PK
+        string AIN_Candidate_Question__c FK
+        string AIN_Contact__c FK
+        string AIN_Job__c FK
+        string AIN_Job_Board_Application__c FK
+        string AIN_Parent_Response__c FK
+        string AIN_Question_Snapshot__c
+        string AIN_Answer__c
+        number AIN_Level__c
+    }
+
+    EXTERNAL_CUSTOM_FIELDS {
+        string Id PK
+        string AIN_Job__c FK
+        string AIN_Job_Posting_UID__c
+        string AIN_Mapped_Field_Name__c
+        boolean AIN_Required__c
+        string AIN_Type__c
+    }
+
+    WEBHOOK_REQUEST {
+        string Id PK
+        string AIN_Platform_Name__c
+        string AIN_Event_Type__c
+        string AIN_Status__c
+        number AIN_Retry_Count__c
+        string AIN_Error_Message__c
+    }
+
+    WEBHOOK_EVENT {
+        string AIN_Platform_Name__c
+        string AIN_Event_Type__c
+        string AIN_PayLoad__c
+        string AIN_Reference_Id__c
+    }
+
+    INTEGRATION_CREDENTIALS {
         string Id PK
         string MasterLabel
         string AIN_Base_URL__c
         string AIN_Client_Id__c
         string AIN_Client_Secret__c
-        string AIN_Employer_Id__c
     }
-    
-    AIN_JOB_MAPPING {
+
+    JOB_MAPPING {
         string Id PK
-        string MasterLabel
-        string AIN_Field_Api_Name__c
-        string AIN_Mapped_Field__c
-        string AIN_Mapped_Object__c
-        boolean AIN_Is_Active__c
-        boolean AIN_Is_Required__c
-    }
-    
-    AIN_VMS_JOB_MAPPING {
-        string Id PK
-        string MasterLabel
         string AIN_Field_Api_Name__c
         string AIN_Mapped_Field__c
         string AIN_Mapped_Object__c
         boolean AIN_Is_Active__c
     }
-    
-    AIN_JOB_BOARD_MAPPING {
+
+    VMS_JOB_MAPPING {
         string Id PK
-        string MasterLabel
         string AIN_Field_Api_Name__c
         string AIN_Mapped_Field__c
         string AIN_Mapped_Object__c
         boolean AIN_Is_Active__c
     }
-    
-    AIN_VMS_JOB_BOARD_MAPPING {
+
+    JOB_BOARD_MAPPING {
         string Id PK
-        string MasterLabel
         string AIN_Field_Api_Name__c
         string AIN_Mapped_Field__c
         string AIN_Mapped_Object__c
-        boolean AIN_Is_Sync__c
+        boolean AIN_Is_Active__c
     }
-    
-    AIN_INDEED_APPLY_MAPPING {
+
+    VMS_JOB_BOARD_MAPPING {
         string Id PK
-        string MasterLabel
         string AIN_Field_Api_Name__c
-        boolean AIN_Is_Required__c
-        boolean AIN_IsMultiple__c
+        string AIN_Mapped_Field__c
+        string AIN_Mapped_Object__c
+        string AIN_Candidate_Status_Field_Api_Name__c
+        string AIN_Worker_Field_Api_Name__c
+    }
+
+    DISPOSITION_SYNC_CONFIG {
+        string Id PK
+        string AIN_Field_Api_Name__c
+        string AIN_Object_API_Name__c
+        string AIN_Mapped_Sf_Field__c
+        boolean AIN_Is_Status__c
+        boolean AIN_Is_Synced__c
+    }
+
+    DEFAULT_QUESTION_TEMPLATE {
+        string Id PK
+        string AIN_Category__c
+        string AIN_Question__c
+        string AIN_Data_Type__c
     }
 ```
+
+## Color Coding (per `ProductDocumentations/Claude.md` conventions)
+
+| Category | Objects |
+|---|---|
+| **Core Objects** (Blue `#E3F2FD`/`#1976D2`) | `Job__c`, `ATS_Applicant__c`, `Job_Board_Application__c`, `Contact` (extended ATS base objects) |
+| **Supporting Objects** (Purple `#F3E5F5`/`#7B1FA2`) | `AIN_Candidate_Question__c`, `AIN_Candidate_Response__c`, `AIN_Question_Assignment__c`, `AIN_External_Custom_Fields__c`, `AIN_Webhook_Request__c`, `AIN_Webhook_Event__e` |
+| **Configuration Objects** (Green `#E8F5E9`/`#388E3C`) | All 10 CMDT types (`AIN_Job_Mapping__mdt`, `AIN_Vms_Job_Mapping__mdt`, `AIN_Job_Board_Mapping__mdt`, `AIN_Vms_Job_Board_Mapping__mdt`, `AIN_Indeed_Apply_Mapping__mdt`, `AIN_Integration_Credentials__mdt`, `AIN_Disposition_Sync_Config__mdt`, `AIN_Disposition_Value_Map__mdt`, `AIN_Default_Question_Template__mdt`, `AIN_Webhook_Setup__mdt`) |
+| **External Objects** (Orange `#FFF3E0`/`#F57C00`) | Indeed, Beeline, RedDot (not SF objects — represented conceptually only) |
 
 ## Relationship Descriptions
 
-### Core Object Relationships
+1. **`Job__c` → `AIN_Question_Assignment__c` → `AIN_Candidate_Question__c`** (new) — job-specific screening/demographic question sets; falls back to `AIN_Is_Pre_Selected__c = true` questions when no assignment exists for a job.
+2. **`AIN_Candidate_Question__c` self-lookup (`AIN_Parent_Question__c`)** (new) — supports hierarchical/conditional question trees.
+3. **`AIN_Candidate_Response__c` → `AIN_Candidate_Question__c` / `Contact` / `Job__c` / `Job_Board_Application__c`** (new) — captures a candidate's answer with a point-in-time question snapshot (`AIN_Question_Snapshot__c`), plus a self-lookup (`AIN_Parent_Response__c`) mirroring the question hierarchy.
+4. **`Job__c` → `AIN_External_Custom_Fields__c`** (new) — VMS (Beeline)-supplied custom field definitions discovered per job posting.
+5. **`AIN_Webhook_Request__c` ↔ `AIN_Webhook_Event__e`** (new) — not a formal SF relationship (platform events have no durable storage/FK), but functionally linked: webhook requests may trigger an event publish for async processing via `AIN_Webhook_Platform_Event_Flow`.
+6. **`ATS_Applicant__c` / `bpats__ATS_Stage__c` ↔ `AIN_Disposition_Sync_Config__mdt` / `AIN_Disposition_Value_Map__mdt`** (new) — configuration-only "relationship": CMDT records reference SF object/field API names as semicolon-delimited strings, not formal lookups, resolved dynamically at runtime by `AIN_DispositionSyncService`.
+7. **`Job__c` ↔ `AIN_Job_Mapping__mdt` / `AIN_Vms_Job_Mapping__mdt`**, **`Job_Board_Application__c` ↔ `AIN_Job_Board_Mapping__mdt` / `AIN_Vms_Job_Board_Mapping__mdt`** (carried over, still accurate) — field-mapping configuration relationships.
+8. **`AIN_Integration_Credentials__mdt` ↔ External Systems** (expanded) — now 4 systems: Beeline, Indeed, Indeed_Apply, **RedDot** (RedDot was missing from the prior ERD).
 
-1. **Job__c ↔ ATS_Applicant__c**
-   - Relationship: One-to-Many
-   - Description: A job can receive multiple applications
-   - Integration Impact: Applications are linked to source job postings
+## Metadata Type Summary (verified)
 
-2. **ATS_Applicant__c ↔ Contact**
-   - Relationship: Many-to-One
-   - Description: Multiple applications can be from the same contact
-   - Integration Impact: Deduplication based on contact matching
+| Metadata Type | Record Count |
+|---|---|
+| `AIN_Job_Mapping__mdt` | 67 |
+| `AIN_Vms_Job_Mapping__mdt` | 50 |
+| `AIN_Vms_Job_Board_Mapping__mdt` | 35 |
+| `AIN_Job_Board_Mapping__mdt` | 32 |
+| `AIN_Disposition_Value_Map__mdt` | 24 |
+| `AIN_Disposition_Sync_Config__mdt` | 13 |
+| `AIN_Indeed_Apply_Mapping__mdt` | 6 |
+| `AIN_Default_Question_Template__mdt` | 6 |
+| `AIN_Integration_Credentials__mdt` | 4 |
+| `AIN_Webhook_Setup__mdt` | 1 |
+| **Total** | **240** |
 
-### Metadata Configuration Relationships
+## Corrections vs. prior ERD
 
-3. **Job__c ↔ AIN_Job_Mapping__mdt**
-   - Relationship: Configured By (One-to-Many)
-   - Description: Job fields are mapped to Indeed API fields
-   - Record Count: 61 active mappings
-
-4. **Job__c ↔ AIN_Vms_Job_Mapping__mdt**
-   - Relationship: Configured By (One-to-Many)
-   - Description: Job fields are mapped to Beeline VMS fields
-   - Record Count: 50 active mappings
-
-5. **ATS_Applicant__c ↔ AIN_Job_Board_Mapping__mdt**
-   - Relationship: Configured By (One-to-Many)
-   - Description: Application data mapped from job boards
-   - Record Count: 28 active mappings
-
-6. **ATS_Applicant__c ↔ AIN_Vms_Job_Board_Mapping__mdt**
-   - Relationship: Configured By (One-to-Many)
-   - Description: Candidate submission mapping for VMS
-   - Record Count: 42 active mappings
-
-### External System Relationships
-
-7. **AIN_Integration_Credentials__mdt ↔ External Systems**
-   - Relationship: Authenticates (One-to-One)
-   - Systems: Beeline, Indeed, Indeed Apply
-   - Description: Each external system has dedicated credentials
-
-## Data Flow Patterns
-
-### Outbound Job Publishing
-```
-Job__c → AIN_Job_Mapping__mdt → Indeed API
-Job__c → AIN_Vms_Job_Mapping__mdt → Beeline API
-```
-
-### Inbound Application Processing
-```
-Indeed Apply → AIN_Job_Board_Mapping__mdt → Contact + ATS_Applicant__c
-Job Board → AIN_Job_Board_Mapping__mdt → Contact + ATS_Applicant__c
-```
-
-### Candidate Submission to VMS
-```
-ATS_Applicant__c → AIN_Vms_Job_Board_Mapping__mdt → Beeline Candidate API
-```
-
-## Integration Control Fields
-
-### On Job__c
-- **AIN_Source_Posting_Id__c**: Stores external system job ID
-- **AIN_Sync_This_Record__c**: Controls whether job should sync
-- **AIN_Is_Synced__c**: Current synchronization status
-- **AIN_Activity_History__c**: JSON log of integration activities
-- **AIN_Indeed_Apply__c**: Indeed Apply enablement flag
-
-### On ATS_Applicant__c
-- **AIN_BE_Candidate_Id__c**: Beeline candidate identifier
-- **AIN_BE_Worker_Id__c**: Beeline worker identifier for placed candidates
-
-## Metadata Type Summary
-
-| Metadata Type | Record Count | Purpose |
-|---|---|---|
-| AIN_Integration_Credentials__mdt | 3 | Store system credentials |
-| AIN_Job_Mapping__mdt | 61 | Indeed job field mappings |
-| AIN_Job_Board_Mapping__mdt | 28 | Application field mappings |
-| AIN_Indeed_Apply_Mapping__mdt | 6 | Indeed Apply configuration |
-| AIN_Vms_Job_Mapping__mdt | 50 | Beeline job field mappings |
-| AIN_Vms_Job_Board_Mapping__mdt | 42 | Candidate submission mappings |
-| **Total** | **190** | Complete integration configuration |
-
-## Key Integration Points
-
-### 1. Job Publishing
-- Triggered by Job__c record changes
-- Uses metadata mappings for field transformation
-- Updates external IDs upon successful publishing
-
-### 2. Application Receipt
-- REST endpoint receives applications
-- Creates/updates Contact records
-- Creates ATS_Applicant__c records
-- Maintains relationship to source Job__c
-
-### 3. VMS Integration
-- Bidirectional sync for jobs and candidates
-- Worker ID tracking for placements
-- Status updates from VMS system
-
-### 4. Activity Tracking
-- All integration events logged
-- JSON-based activity history
-- Error tracking and retry logic
-
-## Security & Access Control
-
-### Permission Sets
-1. **AIN_Admin**: Full access to all integration objects
-2. **AIN_Beeline_Admin**: VMS-specific access
-3. **AIN_IN_Integration_Guest_User**: API endpoint access
-
-### Field-Level Security
-- Encrypted fields for credentials
-- Read-only external IDs
-- Restricted access to activity logs
-
-## Best Practices
-
-1. **Data Integrity**
-   - Always populate external IDs
-   - Maintain bidirectional references
-   - Use upsert operations for idempotency
-
-2. **Performance**
-   - Index external ID fields
-   - Bulk process where possible
-   - Cache metadata configurations
-
-3. **Error Handling**
-   - Log all integration attempts
-   - Implement retry mechanisms
-   - Alert on repeated failures
+- Prior ERD modeled a fictional `JOB_ACTIVITY` and `APPLICATION_ACTIVITY` entity with no backing object in the package — removed.
+- Prior ERD was missing the entire Candidate Question/Response/Assignment subsystem, the Webhook Request/Event subsystem, `AIN_External_Custom_Fields__c`, and 4 of the 10 CMDT types.
+- Prior ERD's metadata record counts (61/28/50/42/6/3 = 190) are stale; verified current counts total 240 across 10 types (table above).

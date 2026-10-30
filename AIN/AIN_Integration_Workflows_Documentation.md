@@ -2,580 +2,163 @@
 
 ## Overview
 
-This document details the complete integration workflows implemented in the AIN package, covering data flows between Salesforce and external systems including Beeline VMS, Indeed Job Board, and Indeed Apply.
+This document describes the verified, code-level workflows implemented in the AIN package across Beeline, Indeed, Indeed Apply, and RedDot integrations, plus the webhook durability and disposition-sync-back subsystems added since the package was last documented.
 
 ## Workflow Categories
 
-| Workflow Type | Systems Involved | Direction | Trigger |
+| Workflow | Systems | Direction | Trigger |
 |---|---|---|---|
-| Job Publishing | Salesforce → External | Outbound | Manual/Automated |
-| Application Processing | External → Salesforce | Inbound | Webhook/API |
-| Status Synchronization | Bidirectional | Both | Scheduled/Real-time |
-| Candidate Submission | Salesforce → VMS | Outbound | Manual Action |
-| Worker Management | VMS ↔ Salesforce | Bidirectional | Event-driven |
+| Job Publishing | Salesforce → Indeed / Beeline / RedDot | Outbound | Quick Action (`Publish_Job`, `Publish_Job_RedDot`) or scheduled batch (`AIN_IndeedPostingBatch`, `AIN_SyncActiveJob`) |
+| Indeed Apply Application Processing | Indeed Apply → Salesforce | Inbound | Webhook (`AIN_IndeedApplyRestResource`) |
+| Beeline Job/Candidate Webhook Processing | Beeline → Salesforce | Inbound | Webhook (`AIN_WebhookController`) |
+| RedDot Source Tracking | RedDot → Salesforce | Inbound | Webhook (`AIN_RedDotJobController`) |
+| Candidate Submission to VMS | Salesforce → Beeline | Outbound | Batch (`AIN_BeelineCandidatePostingBatch`) triggered from `ATS_Applicant__c` changes |
+| Webhook Retry & Cleanup | Internal | N/A | Scheduled batch (`AIN_WebhookRetryBatch`, `AIN_WebhookDeleteBatch`) or manual Quick Action (`Retry_Webhooks`) |
+| Disposition Sync-back | Salesforce → Indeed | Outbound | Queueable (`AIN_DispositionSyncQueueable`), metadata-driven |
+| Screening/Demographic Question Assignment | Admin UI → Job | Internal | LWC (`ainQuestionForm`, `ainQuestionTemplateManager`) via `AIN_ScreeningQuestionController` |
 
-## Detailed Workflow Documentation
+## 1. Job Publishing Workflow
 
-### 1. Job Publishing Workflow
-
-#### Overview
-Publishes job postings from Salesforce to multiple external systems with field mapping and status tracking.
-
-#### Workflow Diagram
+### Sequence
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant J as Job Record
-    participant T as Trigger
-    participant M as Mapping Engine
-    participant I as Integration Service
+    participant QA as Quick Action
+    participant C as Platform Controller
+    participant CMDT as AIN_*_Mapping__mdt
     participant E as External System
-    participant L as Activity Logger
-    
-    U->>J: Set AIN_Sync_This_Record__c = true
-    J->>T: After Update Trigger
-    T->>M: Get Active Field Mappings
-    M->>M: Transform Job Data
-    M->>I: Send Transformed Data
-    
-    alt Indeed Publishing
-        I->>E: POST to Indeed API
-        E->>I: Return Job ID
-    else Beeline Publishing
-        I->>E: POST to Beeline VMS
-        E->>I: Return Posting Number
-    end
-    
-    I->>J: Update AIN_Source_Posting_Id__c
-    I->>J: Set AIN_Is_Synced__c = true
-    I->>L: Log Activity
-    L->>J: Update AIN_Activity_History__c
-    I->>U: Show Success Message
+
+    U->>QA: Click Publish_Job / Publish_Job_RedDot
+    QA->>C: AIN_PublishJobQuickActionController / AIN_ReddotJobPublishController
+    C->>CMDT: Query active field mappings
+    CMDT-->>C: Field mapping records
+    C->>C: Build payload (GraphQL for Indeed, REST JSON for Beeline/RedDot)
+    C->>E: Callout (OAuth2-authenticated)
+    E-->>C: External ID / confirmation
+    C->>C: Update Job__c (AIN_Source_Posting_Id__c / AIN_BE_Job_Id__c, AIN_Is_Synced__c, AIN_Posting_Channel_History__c)
+    C-->>U: Toast success/error (ainJobPortalCard)
 ```
 
-#### Process Steps
+Jobs can also be bulk-synced via `AIN_SyncActiveJob` (which drives `AIN_IndeedPostingBatch`) rather than only via manual Quick Action.
 
-1. **Initiation**
-   - User selects job(s) for publishing
-   - Sets sync flag via UI or bulk action
-   - Validates required fields present
+## 2. Indeed Apply — Inbound Application Processing
 
-2. **Field Mapping**
-   - Retrieves active mappings from metadata
-   - Transforms Salesforce fields to API format
-   - Handles data type conversions
-   - Applies business rules
-
-3. **API Execution**
-   - Authenticates with external system
-   - Sends transformed payload
-   - Handles response and errors
-   - Implements retry logic
-
-4. **Status Update**
-   - Updates external ID field
-   - Sets synchronization status
-   - Logs activity details
-   - Notifies user of outcome
-
-#### Configuration
-```apex
-// Metadata-driven field mapping
-List<AIN_Job_Mapping__mdt> mappings = [
-    SELECT AIN_Field_Api_Name__c, 
-           AIN_Mapped_Field__c,
-           AIN_Is_Required__c,
-           AIN_Field_Type__c
-    FROM AIN_Job_Mapping__mdt
-    WHERE AIN_Is_Active__c = true
-];
-```
-
----
-
-### 2. Application Processing Workflow
-
-#### Overview
-Processes incoming job applications from external sources, creates/updates contacts and applicants.
-
-#### Workflow Diagram
 ```mermaid
 sequenceDiagram
-    participant E as External System
-    participant W as Webhook Endpoint
-    participant V as Validator
-    participant P as Parser
-    participant C as Contact Service
-    participant A as Applicant Service
-    participant N as Notification
-    
-    E->>W: POST Application Data
-    W->>V: Validate Request
-    
-    alt Valid Request
-        V->>P: Parse Application JSON
-        P->>C: Find/Create Contact
-        C->>C: Deduplicate by Email
-        C->>A: Create ATS_Applicant
-        A->>A: Link to Job
-        A->>N: Send Notifications
-        N->>W: Return Success
-    else Invalid Request
-        V->>W: Return Error 400
+    participant I as Indeed Apply
+    participant R as AIN_IndeedApplyRestResource
+    participant F as AIN_JsonFlattener
+    participant WR as AIN_Webhook_Request__c
+    participant S as Job_Board_Application__c / Contact
+
+    I->>R: POST application payload
+    R->>WR: Log webhook request (status = Pending)
+    R->>F: Flatten nested JSON payload
+    F-->>R: Flattened field map
+    R->>R: Resolve fields via AIN_Job_Board_Mapping__mdt
+    R->>S: Create/Update Job_Board_Application__c, Contact
+    R->>WR: Update status (Success/Failure) + error message
+    R-->>I: HTTP response
+```
+
+Screening and demographic question answers captured as part of the application are persisted against `AIN_Candidate_Response__c`, snapshotting the question text/options at time of answer (`AIN_Question_Snapshot__c`) so historical answers remain interpretable even if the question library changes later. Hierarchical/conditional questions are supported via `AIN_Candidate_Question__c.AIN_Parent_Question__c` self-lookup and `AIN_Candidate_Response__c.AIN_Parent_Response__c`/`AIN_Level__c`.
+
+## 3. Beeline Webhook Processing
+
+```mermaid
+sequenceDiagram
+    participant B as Beeline
+    participant W as AIN_WebhookController
+    participant WR as AIN_Webhook_Request__c
+    participant J as AIN_BeelineJobController
+    participant CMDT as AIN_Vms_Job_Mapping__mdt
+
+    B->>W: POST /services/apexrest/webhook/beeline/receive
+    W->>WR: Persist request (event type: JOB_POSTING_RELEASED / UPDATED / CANDIDATE_SUBMISSION_*)
+    W->>J: Dispatch by event type
+    J->>CMDT: Resolve active job field mappings
+    J->>J: Upsert Job__c / ATS_Applicant__c via mapped fields
+    alt Job posting released
+        J->>J: Fetch candidate custom fields → AIN_External_Custom_Fields__c
+        J->>J: Queue attachment download (AIN_BeelineJobAttachmentBatch)
     end
-    
-    W->>E: HTTP Response
+    J->>WR: Update status
 ```
 
-#### Indeed Apply Integration
-```json
-// Sample Indeed Apply Payload
-{
-  "jobKey": "abc123",
-  "jobTitle": "Software Engineer",
-  "jobCompany": "Asymbl Inc",
-  "applicant": {
-    "fullName": "John Doe",
-    "email": "john.doe@email.com",
-    "phoneNumber": "+1234567890",
-    "resume": {
-      "text": "Resume content...",
-      "json": {
-        "skills": ["Salesforce", "Apex"],
-        "experience": [...]
-      }
-    },
-    "coverLetter": "Cover letter text..."
-  },
-  "appliedAt": "2024-01-15T10:30:00Z"
-}
-```
+If processing fails or Beeline's attachment payload needs async handling, `AIN_WebhookRetryBatch` re-processes the `AIN_Webhook_Request__c` record later, re-authenticating and re-fetching job details as needed (see `handleJobCreationAndUpdation` in `AIN_WebhookRetryBatch`).
 
-#### Processing Logic
-```apex
-@RestResource(urlMapping='/ain/indeed/apply')
-global class AIN_IndeedApplyRestResource {
-    @HttpPost
-    global static void handleApplication() {
-        RestRequest req = RestContext.request;
-        
-        // Validate webhook signature
-        if (!validateSignature(req)) {
-            sendError(401, 'Invalid signature');
-            return;
-        }
-        
-        // Parse application
-        ApplicationData data = parseApplication(req.requestBody.toString());
-        
-        // Process asynchronously for large payloads
-        if (data.resumeSize > 100000) {
-            System.enqueueJob(new ApplicationProcessor(data));
-        } else {
-            processApplication(data);
-        }
-    }
-}
-```
+## 4. RedDot Source Tracking Workflow
 
----
-
-### 3. Status Synchronization Workflow
-
-#### Overview
-Maintains data consistency between Salesforce and external systems through scheduled and real-time sync.
-
-#### Sync Patterns
-
-##### Pattern 1: Scheduled Batch Sync
 ```mermaid
-flowchart LR
-    A[Scheduled Job] --> B[Query Changed Records]
-    B --> C[Group by System]
-    C --> D[Bulk API Call]
-    D --> E[Process Responses]
-    E --> F[Update Records]
-    F --> G[Log Results]
+sequenceDiagram
+    participant RD as RedDot
+    participant C as AIN_RedDotJobController
+    participant WR as AIN_Webhook_Request__c
+    participant J as Job__c
+
+    RD->>C: POST /services/apexrest/redDotJob/* (JOB_UPDATE event)
+    C->>WR: Log webhook request
+    C->>J: Query Job__c by reference (job.reference)
+    C->>J: Append "RedDot" to AIN_Posting_Locations__c (dedup)
+    C->>J: Append posting event to AIN_Posting_Channel_History__c (JSON array)
+    C->>WR: Update status
 ```
 
-##### Pattern 2: Real-time Event Sync
-```mermaid
-flowchart LR
-    A[Record Change] --> B[Platform Event]
-    B --> C[Event Subscriber]
-    C --> D[API Call]
-    D --> E[Update Status]
-```
+RedDot job publishing (outbound) is a separate flow driven by the `Publish_Job_RedDot` Quick Action and `AIN_ReddotJobPublishController`; `Flow_For_Update_RedDot_Job_Source` is the Flow-based counterpart used for source/channel updates triggered outside of direct Apex.
 
-#### Implementation
-```apex
-global class AIN_SyncScheduler implements Schedulable {
-    global void execute(SchedulableContext sc) {
-        // Find records needing sync
-        List<Job__c> jobsToSync = [
-            SELECT Id, Name, LastModifiedDate,
-                   AIN_Source_Posting_Id__c,
-                   AIN_Is_Synced__c
-            FROM Job__c
-            WHERE AIN_Sync_This_Record__c = true
-            AND AIN_Is_Synced__c = false
-            AND LastModifiedDate > :DateTime.now().addHours(-24)
-            LIMIT 200
-        ];
-        
-        // Group by external system
-        Map<String, List<Job__c>> jobsBySystem = groupBySystem(jobsToSync);
-        
-        // Process each system
-        for (String system : jobsBySystem.keySet()) {
-            processBatch(system, jobsBySystem.get(system));
-        }
-    }
-}
-```
+## 5. Candidate Submission to Beeline VMS
 
----
-
-### 4. VMS Candidate Submission Workflow
-
-#### Overview
-Submits qualified candidates from Salesforce ATS to Beeline VMS for client review.
-
-#### Submission Flow
 ```mermaid
 stateDiagram-v2
     [*] --> CandidateSelected
-    CandidateSelected --> ValidationCheck
-    
-    ValidationCheck --> DataMapping: Valid
-    ValidationCheck --> ErrorNotification: Invalid
-    
-    DataMapping --> VMSSubmission
-    VMSSubmission --> PendingResponse
-    
-    PendingResponse --> SubmissionAccepted: Success
-    PendingResponse --> SubmissionRejected: Rejected
-    PendingResponse --> RetrySubmission: Error
-    
-    SubmissionAccepted --> UpdateCandidate
-    UpdateCandidate --> NotifyRecruiter
-    NotifyRecruiter --> [*]
-    
-    SubmissionRejected --> NotifyRecruiter
-    RetrySubmission --> VMSSubmission: Retry < 3
-    RetrySubmission --> ErrorNotification: Retry >= 3
-    ErrorNotification --> [*]
+    CandidateSelected --> FieldMapping: AIN_Sync_This_To_VMS__c = true
+    FieldMapping --> BeelineSubmission: AIN_BeelineCandidatePostingService builds payload
+    BeelineSubmission --> PendingResponse
+    PendingResponse --> Submitted: Beeline accepts
+    PendingResponse --> SubmissionFailed: Beeline rejects
+    Submitted --> UpdateApplicant: AIN_BE_Candidate_Id__c / AIN_BE_Candidate_Status__c set
+    SubmissionFailed --> UpdateApplicant: AIN_Failure_Reasons__c set
+    UpdateApplicant --> [*]
 ```
 
-#### Candidate Mapping Configuration
-```yaml
-Required Fields:
-  - First Name: Contact.FirstName
-  - Last Name: Contact.LastName
-  - Email: Contact.Email
-  - Phone: Contact.Phone
-  - Resume: Attachment or Rich Text
-  - Bill Rate: ATS_Applicant__c.Bill_Rate__c
-  - Available Date: ATS_Applicant__c.Available_Date__c
+Candidate field mapping uses `AIN_Vms_Job_Board_Mapping__mdt`, which (unlike the job mapping CMDT) also carries candidate-status and worker-id tracker field references (`AIN_Candidate_Status_Field_Api_Name__c`, `AIN_Candidate_Id_Mapped_Field_Api_Name__c`, `AIN_Worker_Field_Api_Name__c`).
 
-Optional Fields:
-  - Skills: Contact.Skills__c
-  - Certifications: Contact.Certifications__c
-  - Previous Client: Contact.Former_Employee__c
-```
+## 6. Disposition Sync-back to Indeed
 
----
-
-### 5. Multi-System Publishing Workflow
-
-#### Overview
-Enables simultaneous job posting to multiple external systems with individual status tracking.
-
-#### Parallel Publishing Architecture
-```mermaid
-flowchart TB
-    J[Job Record] --> Q[Quick Action]
-    Q --> S[System Selector]
-    
-    S --> I1[Indeed Publisher]
-    S --> B1[Beeline Publisher]
-    S --> O1[Other System Publisher]
-    
-    I1 --> R1[Indeed Result]
-    B1 --> R2[Beeline Result]
-    O1 --> R3[Other Result]
-    
-    R1 --> A[Aggregator]
-    R2 --> A
-    R3 --> A
-    
-    A --> U[Update Job Status]
-    U --> N[Notify User]
-```
-
-#### Implementation Pattern
-```apex
-public class AIN_MultiSystemPublisher {
-    public static PublishResult publishToAll(Id jobId, Set<String> systems) {
-        Job__c job = getJobWithMappings(jobId);
-        List<PublishRequest> requests = new List<PublishRequest>();
-        
-        // Create parallel requests
-        for (String system : systems) {
-            requests.add(new PublishRequest(job, system));
-        }
-        
-        // Execute in parallel
-        List<PublishResult> results = executeParallel(requests);
-        
-        // Aggregate results
-        return aggregateResults(results);
-    }
-    
-    @future(callout=true)
-    private static void executeParallel(String requestsJson) {
-        List<PublishRequest> requests = 
-            (List<PublishRequest>)JSON.deserialize(requestsJson, List<PublishRequest>.class);
-            
-        // Use Queueable for each system
-        for (PublishRequest req : requests) {
-            System.enqueueJob(new SystemPublisher(req));
-        }
-    }
-}
-```
-
----
-
-### 6. Error Handling and Recovery Workflow
-
-#### Overview
-Comprehensive error handling with automatic retry and manual intervention options.
-
-#### Error Recovery Flow
 ```mermaid
 flowchart LR
-    E[Error Occurs] --> C{Error Type}
-    
-    C -->|Transient| R[Retry Logic]
-    C -->|Authentication| A[Refresh Auth]
-    C -->|Validation| V[Log & Notify]
-    C -->|Unknown| U[Escalate]
-    
-    R --> R1{Retry Count}
-    R1 -->|< 3| W[Wait & Retry]
-    R1 -->|>= 3| F[Mark Failed]
-    
-    A --> A1[Get New Token]
-    A1 --> W
-    
-    W --> S[Retry Operation]
-    S -->|Success| OK[Update Status]
-    S -->|Fail| E
-    
-    F --> N[Notify Admin]
-    V --> N
-    U --> N
+    A[Scheduled/invoked AIN_DispositionSyncQueueable] --> B[Query ATS_Applicant__c / ATS_Stage__c per CMDT-resolved fields]
+    B --> C[AIN_DispositionSyncService.buildPayloads]
+    C --> D{Status source}
+    D -->|Applicant Rejected + mapped| E[Use Applicant status]
+    D -->|Applicant null/empty/Active| F[Use Stage status]
+    E --> G[Build nested GraphQL payload]
+    F --> G
+    G --> H[partnerDispositionSync mutation to Indeed]
+    H --> I[Update AIN_Is_Synced__c tracker field]
 ```
 
-#### Retry Implementation
-```apex
-public class AIN_RetryHandler {
-    private static final Integer MAX_RETRIES = 3;
-    private static final Integer BASE_WAIT_TIME = 1000; // ms
-    
-    public static Object executeWithRetry(Callable operation) {
-        Exception lastException;
-        
-        for (Integer i = 0; i < MAX_RETRIES; i++) {
-            try {
-                return operation.call();
-            } catch (Exception e) {
-                lastException = e;
-                
-                if (!isRetryable(e) || i == MAX_RETRIES - 1) {
-                    throw e;
-                }
-                
-                // Exponential backoff
-                Integer waitTime = BASE_WAIT_TIME * (Integer)Math.pow(2, i);
-                sleep(waitTime);
-            }
-        }
-        
-        throw lastException;
-    }
-    
-    private static Boolean isRetryable(Exception e) {
-        return e.getMessage().contains('timeout') ||
-               e.getMessage().contains('500') ||
-               e.getMessage().contains('503');
-    }
-}
+Records with a required field missing a value are skipped and logged with a specific reason string (not silently dropped) via `result.skippedRecordReasons`.
+
+## 7. Webhook Retry & Cleanup
+
+```mermaid
+flowchart LR
+    A[AIN_Webhook_Request__c status = Failure/Pending] --> B[AIN_WebhookRetryBatch.start — query ordered by CreatedDate]
+    B --> C{Platform Name}
+    C -->|beeline| D[Re-run Beeline job/candidate handler]
+    C -->|reddot| E[Re-run AIN_RedDotJobController.updateSourceOnRedDotJob]
+    C -->|indeed| F[Re-run AIN_IndeedApplyRestResource.indeedWebhookHandler]
+    D --> G[Upsert resulting records, update retry count]
+    E --> G
+    F --> G
+    G --> H[AIN_WebhookDeleteBatch purges aged Success/Failure logs per AIN_Webhook_Setup__mdt]
 ```
 
----
+Manual retry is also available per-record via the `Retry_Webhooks` Quick Action on `AIN_Webhook_Request__c`, backed by `AIN_RetryWebhookController`.
 
-## Integration Patterns
+## Corrections vs. prior documentation
 
-### 1. Request-Response Pattern
-Used for: Job publishing, candidate submission
-```apex
-HttpRequest req = buildRequest(endpoint, method, body);
-HttpResponse res = http.send(req);
-processResponse(res);
-```
-
-### 2. Webhook Pattern
-Used for: Application processing, status updates
-```apex
-@RestResource(urlMapping='/ain/webhook/*')
-global class WebhookHandler {
-    @HttpPost
-    global static void handleWebhook() {
-        // Process incoming data
-    }
-}
-```
-
-### 3. Polling Pattern
-Used for: Status synchronization
-```apex
-global class PollingJob implements Schedulable {
-    global void execute(SchedulableContext sc) {
-        // Check for updates
-    }
-}
-```
-
-### 4. Event-Driven Pattern
-Used for: Real-time updates
-```apex
-// Platform Event
-public class Job_Sync_Event__e {
-    public String JobId__c;
-    public String Action__c;
-}
-
-// Subscriber
-trigger JobSyncEventTrigger on Job_Sync_Event__e (after insert) {
-    // Process events
-}
-```
-
-## Security Considerations
-
-### API Security
-1. **Authentication**
-   - OAuth 2.0 for Beeline
-   - API keys for Indeed
-   - Webhook signatures for Indeed Apply
-
-2. **Data Encryption**
-   - TLS 1.2+ for all communications
-   - Field-level encryption for sensitive data
-   - Encrypted credential storage
-
-3. **Access Control**
-   - IP whitelisting for webhooks
-   - Rate limiting per endpoint
-   - Request validation and sanitization
-
-### Audit Trail
-```json
-{
-  "timestamp": "2024-01-15T10:30:00Z",
-  "user": "005xx000001AbCD",
-  "action": "job_published",
-  "system": "Indeed",
-  "recordId": "a01xx0000001234",
-  "status": "success",
-  "details": {
-    "externalId": "IND-123456",
-    "fieldsModified": ["title", "description"],
-    "responseTime": 245
-  }
-}
-```
-
-## Performance Optimization
-
-### Bulk Processing
-- Batch jobs up to 200 records
-- Use collection methods in Apex
-- Implement cursor-based pagination
-
-### Caching Strategy
-- Cache authentication tokens
-- Store field mappings in memory
-- Use Platform Cache for frequent lookups
-
-### Async Processing
-- Use @future for single records
-- Implement Queueable for chains
-- Batch Apex for large volumes
-
-## Monitoring and Alerting
-
-### Key Metrics
-1. **Integration Success Rate**
-   - Target: >99.5%
-   - Alert threshold: <95%
-
-2. **Response Time**
-   - Target: <3 seconds
-   - Alert threshold: >10 seconds
-
-3. **Error Rate**
-   - Target: <0.5%
-   - Alert threshold: >5%
-
-### Dashboard Components
-```apex
-// Real-time monitoring
-public class AIN_IntegrationMetrics {
-    public static Map<String, Object> getCurrentMetrics() {
-        return new Map<String, Object>{
-            'successRate' => calculateSuccessRate(),
-            'avgResponseTime' => getAverageResponseTime(),
-            'activeIntegrations' => getActiveIntegrationCount(),
-            'queueDepth' => getQueueDepth(),
-            'lastError' => getLastError()
-        };
-    }
-}
-```
-
-## Best Practices
-
-### 1. Idempotency
-- Use external IDs for deduplication
-- Implement upsert operations
-- Handle duplicate submissions gracefully
-
-### 2. Error Recovery
-- Implement exponential backoff
-- Provide manual retry options
-- Log all errors with context
-
-### 3. Data Validation
-- Validate before sending
-- Handle partial success
-- Provide clear error messages
-
-### 4. Scalability
-- Design for bulk operations
-- Use async processing
-- Implement rate limiting
-
-## Summary
-
-The AIN integration workflows provide:
-
-1. **Reliable Data Exchange**: Robust error handling and retry logic
-2. **Real-time Processing**: Webhook and event-driven patterns
-3. **Scalable Architecture**: Bulk processing and async operations
-4. **Comprehensive Monitoring**: Activity logging and metrics
-5. **Flexible Configuration**: Metadata-driven field mappings
-
-These workflows enable seamless integration between Salesforce and external recruiting systems while maintaining data integrity and system performance.
+- There is no generic "Request-Response / Webhook / Polling / Event-Driven pattern" abstraction layer, nor a `Job_Sync_Event__e` platform event — the actual platform event is `AIN_Webhook_Event__e`, driving `AIN_Webhook_Platform_Event_Flow`, not a custom `JobSyncEventTrigger`.
+- There is no `AIN_SyncScheduler implements Schedulable` class with a 24-hour LastModifiedDate filter as previously documented; the real scheduled job for Indeed publishing is `AIN_IndeedJobSyncScheduler` (invoked via `AIN_PostInstallScript.onInstall()` → `scheduleDaily()`), and webhook cleanup/retry are handled by `AIN_WebhookDeleteBatch` / `AIN_WebhookRetryBatch`.
+- RedDot, disposition sync, screening-question workflows, and the webhook durability framework (`AIN_Webhook_Request__c`) are all materially new since the package was last documented and were entirely absent from the prior workflow documentation.

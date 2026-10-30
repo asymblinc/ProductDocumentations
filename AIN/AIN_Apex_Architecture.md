@@ -2,480 +2,60 @@
 
 ## Overview
 
-The AIN package contains 41 Apex classes that implement the integration logic, API callouts, data transformation, and administrative interfaces. The architecture follows a layered approach with clear separation of concerns.
+The AIN package contains **106 Apex classes** (verified against `manifest/package.xml`, `ApexClass` type, on `master`), of which **43 are test classes** (`*Test.cls` naming convention). The remaining 63 classes implement REST/callout services, trigger handlers, batch/queueable jobs, Lightning controllers, and shared utilities. There is **no abstract `AIN_IIntegrationService`/factory/retry-handler framework** — each external system (Beeline, Indeed, RedDot) has its own dedicated controller/service classes; there is no generic polymorphic service layer.
 
 ## Apex Class Summary
 
-| Category | Count | Purpose |
+| Category | Representative Classes | Notes |
 |---|---|---|
-| **Integration Services** | 8 | External API callouts and webhook handling |
-| **Controllers** | 6 | Lightning component controllers |
-| **Utilities** | 7 | Common functionality and helpers |
-| **Handlers** | 3 | Trigger and event handlers |
-| **Test Classes** | 17 | Unit tests (41% of total classes) |
-| **Total** | **41** | Complete integration framework |
+| **Triggers & Handlers** | `AIN_TriggerHandler` (base), `AIN_ApplicantTriggerHandler`, `AIN_JobTriggerHandler`, `AIN_JBATriggerHandler` | One handler per trigger; trigger files are one line (`new Handler().run();`) |
+| **Trigger Helpers** | `AIN_BeelineCandidateTriggerHelper`, `AIN_IndeedPostingTriggerHelper` | Called from handlers; implement the actual sync logic |
+| **Beeline Integration** | `AIN_BeelineCalloutServices`, `AIN_BeelineJobController`, `AIN_BeelineCandidateController`, `AIN_BeelineCandidatePostingBatch`, `AIN_BeelineCandidatePostingService`, `AIN_BeelineJobAttachmentBatch`, `AIN_BeelineAuthSettingController`, `AIN_BeelineObjectMappingController` | OAuth2 client-credentials auth, REST callouts |
+| **Indeed Integration** | `AIN_IndeedCalloutService`, `AIN_IndeedApplyRestResource`, `AIN_IndeedApplyController`, `AIN_IndeedAuthSettingController`, `AIN_IndeedOAuthController`, `AIN_IndeedOAuthCallbackController`, `AIN_IndeedPostingBatch`, `AIN_IndeedQuestionBuilder`, `AIN_GraphQLGenerator`, `AIN_SyncActiveJob` | GraphQL API, OAuth2 authorization-code flow (`ExternalClientApplication`/`NamedCredential`) |
+| **RedDot Integration** | `AIN_RedDotAuthSettingController`, `AIN_RedDotJobController`, `AIN_RedDotJobControllerWrapper`, `AIN_ReddotJobPublishController` | REST endpoint `/redDotJob/*`; webhook-driven posting-location/source tracking |
+| **Disposition Sync (Indeed)** | `AIN_DispositionSyncService`, `AIN_DispositionSyncHelper`, `AIN_DispositionSyncQueueable`, `AIN_DispositionMappingController`, `AIN_IndeedDispositionMockGenerator` | Pushes ATS Applicant/Stage status to Indeed `partnerDispositionSync`; fully metadata-driven via `AIN_Disposition_Sync_Config__mdt` / `AIN_Disposition_Value_Map__mdt`, no hardcoded field names |
+| **Webhook Framework** | `AIN_WebhookController`, `AIN_WebhookConfigurationController`, `AIN_PlatformEventController`, `AIN_WebhookDeleteBatch`, `AIN_WebhookRetryBatch`, `AIN_RetryWebhookController` | Durable webhook request log (`AIN_Webhook_Request__c`) + platform event (`AIN_Webhook_Event__e`) + scheduled cleanup/retry |
+| **Screening/Question Builder** | `AIN_ScreeningQuestionController`, `AIN_ScreeningQuestionURLController` | Manages `AIN_Candidate_Question__c` / `AIN_Question_Assignment__c`; served via Visualforce page `AIN_ScreeningQuestionURLPage` for guest-accessible question URLs |
+| **Object/Field Mapping Admin** | `AIN_ObjectMappingController`, `AIN_BeelineObjectMappingController`, `AIN_CandidateController`, `AIN_SourceAndDistributionController` | Backs the field-mapping configuration LWCs |
+| **Security / Setup** | `AIN_PermissionSetController`, `AIN_PostInstallScript`, `AIN_SecurityAuditService` | Runtime permission set creation/assignment (no static `.permissionset` metadata exists) |
+| **Utilities** | `AIN_Utility`, `AIN_Constants`, `AIN_JsonFlattener`, `AIN_JsonUnflattener`, `AIN_RequestParser`, `AIN_MetadataService`, `AIN_SelectOptionWrapper`, `AIN_GraphQLGenerator` | Shared helpers; `AIN_Constants` holds ~300 named constants (endpoints, field-map keys, error-message maps) |
+| **Mocks (test support, shipped)** | `AIN_MockGenerator`, `AIN_BeelineMockGenerator`, `AIN_IndeedDispositionMockGenerator`, `AIN_ExternalCredentialMock`, `AIN_TestFactory` | `HttpCalloutMock` implementations used across test classes |
+| **Test Classes** | 43 classes, one per production class following `*Test` suffix | See package.xml `ApexClass` section for the full alphabetical list |
 
-## Architecture Layers
+## Architecture Notes (corrections vs. prior documentation)
 
-### 1. Integration Service Layer
+- There is **no `AIN_FieldMappingService`, `AIN_AuthenticationService`, `AIN_SyncService`, `AIN_ValidationService`, `AIN_RetryHandler`, `AIN_MetadataCache`, `AIN_IntegrationFactory`, `AIN_ActivityLogger`, or `AIN_ErrorHandler` class in this package.** These were fabricated in earlier documentation. Error logging uses `bpats.ATS_LogHandler` (base package); retries are handled by dedicated batch classes (`AIN_WebhookRetryBatch`) rather than a generic retry utility.
+- There is **no `AIN_JobTriggerHandler.beforeDelete()`** cleanup method referenced in old docs — `AIN_JobObjectTrigger` fires on `before insert, after insert, before update` only (no delete events).
+- `AIN_TriggerHandler` is the real base class (template-method pattern: `run()` dispatches to `beforeInsert()`/`afterInsert()`/etc., overridden per handler) — this part of prior documentation was accurate.
+- `AIN_Constants` is a single large constants class (not split into endpoints/error-codes/field-mappings sub-classes as previously described); it also owns the `PERMISSION_SET_MAP` and `ATS_CLASS_PERMISSION` list consumed by `AIN_PermissionSetController`.
 
-#### AIN_BeelineCalloutServices
-**Purpose**: Handles all Beeline VMS API integrations
-**Key Methods**:
-- `authenticateOAuth()` - OAuth 2.0 token management
-- `postJob()` - Submit job to Beeline
-- `submitCandidate()` - Submit candidate for job
-- `updateWorkerStatus()` - Update worker information
-- `getJobStatus()` - Retrieve job posting status
+## Key Trigger Architecture
 
-**Integration Pattern**:
-```apex
-public static HttpResponse postJob(Job__c job) {
-    // Get authentication token
-    String accessToken = authenticateOAuth();
-    
-    // Transform job data using metadata mappings
-    Map<String, Object> jobData = AIN_MetadataService.transformJobData(job, 'Beeline');
-    
-    // Make API call
-    HttpRequest req = buildRequest('POST', '/jobs', jobData, accessToken);
-    return AIN_RetryHandler.executeWithRetry(req);
-}
-```
+| Trigger | Object | Events | Handler |
+|---|---|---|---|
+| `AIN_JobObjectTrigger` | `Job__c` | before insert, after insert, before update | `AIN_JobTriggerHandler` |
+| `AIN_ApplicantObjectTrigger` | `ATS_Applicant__c` | after insert, after update | `AIN_ApplicantTriggerHandler` → delegates to `AIN_BeelineCandidateTriggerHelper` when Beeline sync is enabled |
+| `AIN_JBAObjectTrigger` | `Job_Board_Application__c` | after insert, after update | `AIN_JBATriggerHandler` |
 
-#### AIN_IndeedCalloutService
-**Purpose**: Manages Indeed job board API integration
-**Key Methods**:
-- `publishJob()` - Post job to Indeed
-- `updateJob()` - Update existing job posting
-- `expireJob()` - Remove job from Indeed
-- `getJobAnalytics()` - Retrieve posting performance
+## Disposition Sync Design (new since prior docs)
 
-#### AIN_IndeedApplyRestResource
-**Purpose**: REST endpoint for Indeed Apply webhooks
-**Endpoint**: `/services/apexrest/ain/indeed/apply`
-**Features**:
-- Webhook signature validation
-- Async processing for large payloads
-- Duplicate application detection
-- Error response handling
+`AIN_DispositionSyncService` is explicitly documented in-code as metadata-driven with **no hardcoded SF or Indeed field names** — all field resolution comes from `AIN_Disposition_Sync_Config__mdt` (which object/SF field maps to which Indeed GraphQL field, semicolon-delimited per-object) and `AIN_Disposition_Value_Map__mdt` (SF picklist value → Indeed disposition status, stored as JSON keyed by `object:field`). It builds nested GraphQL input payloads (`buildNestedPayload`) and supports Stage-vs-Applicant status priority resolution. `AIN_DispositionSyncQueueable` performs the actual dynamic SOQL + GraphQL callout; `AIN_DispositionSyncHelper` is the trigger/invocation entry point.
 
-### 2. Controller Layer
+## Webhook Framework Design (new since prior docs)
 
-#### AIN_ObjectMappingController
-**Purpose**: Generic field mapping configuration UI
-**Used By**: `ainObjectMappingSetting` LWC
-**Key Features**:
-- Dynamic field discovery
-- Mapping validation
-- Bulk mapping operations
-- Import/export functionality
+- Inbound webhooks from Beeline (`/services/apexrest/webhook/*/receive`), Indeed Apply, and RedDot (`/services/apexrest/redDotJob/*`) are first persisted to `AIN_Webhook_Request__c` (status, retry count, error message, raw reference id) for durability.
+- `AIN_PlatformEventController` exposes an `@InvocableMethod` ("Webhook Platform Event") that the `AIN_Webhook_Platform_Event_Flow` flow calls to process `AIN_Webhook_Event__e` platform event messages asynchronously, decoupling webhook receipt from processing.
+- `AIN_WebhookRetryBatch` re-attempts `Failure`/`Pending` webhook requests on a schedule, re-dispatching to the Beeline/RedDot/Indeed-specific handler based on `AIN_Platform_Name__c`.
+- `AIN_WebhookDeleteBatch` (also `Schedulable`) purges old webhook request records per `AIN_Webhook_Setup__mdt` retention configuration.
+- `AIN_RetryWebhookController` backs the `Retry_Webhooks` quick action on `AIN_Webhook_Request__c` for manual retry from the record page.
 
-#### AIN_BeelineAuthSettingController
-**Purpose**: Beeline authentication configuration
-**Features**:
-- OAuth credential management
-- Connection testing
-- Token refresh scheduling
-- Error diagnostics
+## Security Patterns (verified in code)
 
-#### AIN_IndeedAuthSettingController
-**Purpose**: Indeed API configuration
-**Features**:
-- API key management
-- Endpoint configuration
-- Rate limit monitoring
-
-#### AIN_PublishJobQuickActionController
-**Purpose**: Job publishing quick action backend
-**Features**:
-- Multi-system publishing
-- Status tracking
-- Error handling
-- Retry logic
-
-#### AIN_IndeedApplyController
-**Purpose**: Indeed Apply configuration management
-**Features**:
-- Field requirement settings
-- Application form customization
-- Webhook URL generation
-
-#### AIN_BeelineObjectMappingController
-**Purpose**: Beeline-specific field mapping UI
-**Features**:
-- VMS field validation
-- Required field enforcement
-- Mapping templates
-
-### 3. Utility Layer
-
-#### AIN_Utility
-**Purpose**: Common utility methods
-**Key Methods**:
-- `generateUUID()` - Unique identifier generation
-- `encryptData()` - Field-level encryption
-- `formatCurrency()` - Currency conversions
-- `parseJSON()` - Safe JSON parsing
-- `logActivity()` - Activity tracking
-
-#### AIN_Constants
-**Purpose**: System-wide constants
-**Contents**:
-- API endpoints
-- Error codes
-- Field mappings
-- System limits
-- Status values
-
-#### AIN_JsonFlattener
-**Purpose**: Complex JSON structure flattening
-**Use Case**: Resume JSON parsing
-**Features**:
-- Nested object handling
-- Array processing
-- Null safety
-- Path-based extraction
-
-#### AIN_RequestParser
-**Purpose**: HTTP request/response parsing
-**Features**:
-- Header extraction
-- Body parsing
-- Error detection
-- Content type handling
-
-#### AIN_MetadataService
-**Purpose**: Runtime metadata operations
-**Key Methods**:
-- `getFieldMappings()` - Retrieve active mappings
-- `transformData()` - Apply transformations
-- `validateMappings()` - Check configuration
-- `cacheMetadata()` - Performance optimization
-
-#### AIN_GraphQLGenerator
-**Purpose**: GraphQL query generation
-**Features**:
-- Dynamic query building
-- Variable binding
-- Fragment support
-- Query optimization
-
-#### AIN_SelectOptionWrapper
-**Purpose**: UI picklist wrapper
-**Usage**: Lightning component dropdowns
-
-### 4. Handler Layer
-
-#### AIN_TriggerHandler
-**Purpose**: Generic trigger framework
-**Pattern**: Template method pattern
-**Features**:
-- Before/after event handling
-- Recursion prevention
-- Bulk processing
-- Error recovery
-
-#### AIN_JobTriggerHandler
-**Purpose**: Job-specific trigger logic
-**Extends**: AIN_TriggerHandler
-**Events**:
-- `afterInsert()` - Initial sync check
-- `afterUpdate()` - Sync on field changes
-- `beforeDelete()` - Cleanup external references
-
-#### AIN_IndeedPostingTriggerHelper
-**Purpose**: Indeed-specific job posting logic
-**Features**:
-- Auto-publish on criteria
-- Status synchronization
-- Error notification
-
-### 5. Test Classes (17 Classes)
-
-#### Test Coverage Summary
-| Class | Test Class | Coverage |
-|---|---|---|
-| AIN_BeelineCalloutServices | AIN_BeelineCalloutServicesTest | 95% |
-| AIN_IndeedCalloutService | AIN_IndeedCalloutServiceTest | 92% |
-| AIN_IndeedApplyRestResource | AIN_IndeedApplyRestResourceTest | 98% |
-| AIN_ObjectMappingController | AIN_ObjectMappingControllerTest | 90% |
-| AIN_JsonFlattener | AIN_JsonFlattenerTest | 100% |
-| AIN_MetadataService | AIN_MetadataServiceTest | 88% |
-| AIN_TriggerHandler | AIN_TriggerHandlerTest | 100% |
-
-#### Mock Classes
-- **AIN_MockGenerator**: Generic HTTP mock responses
-- **AIN_BeelineMockGenerator**: Beeline-specific mocks
-
-### Apex Trigger
-
-#### AIN_JobObjectTrigger
-**Object**: Job__c
-**Events**: All DML events
-**Handler**: AIN_JobTriggerHandler
-**Purpose**: Orchestrates job synchronization
-
-## Design Patterns
-
-### 1. Service Layer Pattern
-```apex
-public class AIN_IntegrationService {
-    // Encapsulates external system interactions
-    private static final AIN_IAuthProvider authProvider;
-    private static final AIN_IDataTransformer transformer;
-    
-    public static IntegrationResult processRequest(IntegrationRequest request) {
-        // Authenticate
-        AuthToken token = authProvider.getToken();
-        
-        // Transform
-        Map<String, Object> data = transformer.transform(request.getData());
-        
-        // Execute
-        return executeCallout(data, token);
-    }
-}
-```
-
-### 2. Factory Pattern
-```apex
-public class AIN_IntegrationFactory {
-    public static IIntegrationService getService(String systemName) {
-        switch on systemName {
-            when 'Beeline' {
-                return new AIN_BeelineService();
-            }
-            when 'Indeed' {
-                return new AIN_IndeedService();
-            }
-            when else {
-                return new AIN_GenericService();
-            }
-        }
-    }
-}
-```
-
-### 3. Template Method Pattern
-```apex
-public abstract class AIN_TriggerHandler {
-    public void run() {
-        if (!validateRun()) return;
-        
-        if (Trigger.isBefore) {
-            beforeHandler();
-        } else {
-            afterHandler();
-        }
-    }
-    
-    protected abstract void beforeHandler();
-    protected abstract void afterHandler();
-}
-```
-
-## Error Handling Strategy
-
-### Exception Hierarchy
-```apex
-public class AIN_IntegrationException extends Exception {}
-public class AIN_AuthenticationException extends AIN_IntegrationException {}
-public class AIN_ValidationException extends AIN_IntegrationException {}
-public class AIN_RateLimitException extends AIN_IntegrationException {}
-```
-
-### Error Recovery
-```apex
-public class AIN_ErrorHandler {
-    public static void handleIntegrationError(Exception e, String context) {
-        // Log error
-        AIN_ActivityLogger.logError(e, context);
-        
-        // Determine if retryable
-        if (isRetryable(e)) {
-            AIN_RetryQueue.enqueue(context);
-        }
-        
-        // Notify administrators
-        if (isCritical(e)) {
-            AIN_NotificationService.notifyAdmins(e);
-        }
-    }
-}
-```
-
-## Performance Optimization
-
-### 1. Bulkification
-All classes follow bulkification patterns:
-```apex
-public static List<IntegrationResult> processJobs(List<Job__c> jobs) {
-    // Collect all data needed
-    Set<Id> accountIds = new Set<Id>();
-    for (Job__c job : jobs) {
-        accountIds.add(job.Account__c);
-    }
-    
-    // Single query for related data
-    Map<Id, Account> accounts = new Map<Id, Account>([
-        SELECT Id, Name, VMS_Client_ID__c 
-        FROM Account 
-        WHERE Id IN :accountIds
-    ]);
-    
-    // Process in bulk
-    List<IntegrationResult> results = new List<IntegrationResult>();
-    for (Job__c job : jobs) {
-        results.add(processJob(job, accounts.get(job.Account__c)));
-    }
-    
-    return results;
-}
-```
-
-### 2. Caching Strategy
-```apex
-public class AIN_MetadataCache {
-    private static Map<String, List<FieldMapping__mdt>> cache = 
-        new Map<String, List<FieldMapping__mdt>>();
-    
-    public static List<FieldMapping__mdt> getMappings(String type) {
-        if (!cache.containsKey(type)) {
-            cache.put(type, loadMappings(type));
-        }
-        return cache.get(type);
-    }
-}
-```
-
-### 3. Async Processing
-```apex
-public class AIN_AsyncProcessor {
-    @future(callout=true)
-    public static void processLargePayload(String serializedData) {
-        // Deserialize
-        IntegrationData data = (IntegrationData)JSON.deserialize(
-            serializedData, IntegrationData.class
-        );
-        
-        // Process without governor limits
-        processData(data);
-    }
-}
-```
-
-## Security Considerations
-
-### 1. CRUD/FLS Enforcement
-```apex
-public static void validateAccess() {
-    if (!Schema.sObjectType.Job__c.isAccessible()) {
-        throw new AIN_SecurityException('Insufficient access to Job object');
-    }
-    
-    if (!Schema.sObjectType.Job__c.fields.Name.isAccessible()) {
-        throw new AIN_SecurityException('Insufficient access to Job Name field');
-    }
-}
-```
-
-### 2. Input Validation
-```apex
-public static void validateInput(String jsonInput) {
-    // Validate JSON structure
-    try {
-        Map<String, Object> parsed = (Map<String, Object>)JSON.deserializeUntyped(jsonInput);
-    } catch (Exception e) {
-        throw new AIN_ValidationException('Invalid JSON input');
-    }
-    
-    // Validate required fields
-    if (!parsed.containsKey('jobId')) {
-        throw new AIN_ValidationException('Missing required field: jobId');
-    }
-}
-```
-
-### 3. Secure API Calls
-```apex
-public static HttpRequest buildSecureRequest(String method, String endpoint) {
-    HttpRequest req = new HttpRequest();
-    req.setMethod(method);
-    req.setEndpoint(endpoint);
-    
-    // Add security headers
-    req.setHeader('X-API-Version', '1.0');
-    req.setHeader('X-Client-Id', getClientId());
-    req.setHeader('Authorization', 'Bearer ' + getAccessToken());
-    
-    // Set timeout
-    req.setTimeout(120000);
-    
-    return req;
-}
-```
-
-## Best Practices Implementation
-
-### 1. Logging and Monitoring
-```apex
-public class AIN_ActivityLogger {
-    public static void logIntegration(String action, Id recordId, Map<String, Object> details) {
-        Activity_Log__c log = new Activity_Log__c();
-        log.Action__c = action;
-        log.Record_Id__c = recordId;
-        log.Details__c = JSON.serialize(details);
-        log.Timestamp__c = DateTime.now();
-        
-        insert log;
-    }
-}
-```
-
-### 2. Configuration Management
-```apex
-public class AIN_ConfigManager {
-    public static String getConfig(String key, String defaultValue) {
-        AIN_Setting__mdt setting = [
-            SELECT Value__c 
-            FROM AIN_Setting__mdt 
-            WHERE DeveloperName = :key 
-            LIMIT 1
-        ];
-        
-        return setting != null ? setting.Value__c : defaultValue;
-    }
-}
-```
-
-### 3. Testing Utilities
-```apex
-@isTest
-public class AIN_TestDataFactory {
-    public static Job__c createJob(String name, Boolean doInsert) {
-        Job__c job = new Job__c(
-            Name = name,
-            Status__c = 'Open',
-            AIN_Sync_This_Record__c = true
-        );
-        
-        if (doInsert) {
-            insert job;
-        }
-        
-        return job;
-    }
-}
-```
+- All DML goes through `bpats.ATS_SecureDml.performSecureDML` / `bpats.ATS_DataUtility.performDML`; no bare `insert`/`update`/`delete` in production classes reviewed.
+- `@AuraEnabled` methods wrap logic in try/catch and rethrow via `bpats.ATS_Utility.createAuraHandledException`.
+- Dynamic SOQL (used throughout for metadata-driven field mapping) is built with `String.escapeSingleQuotes()` and executed via `bpats.ATS_SecureDml.getSecurityEnforcedQueryResult(Database.query(...))`.
+- `AIN_PermissionSetController.getFieldsMapList()` dynamically discovers permissionable fields per object (excluding augmented/person-account/address compound-field suffixes) to build field-level security grants at install/update time rather than relying on static profile/permission-set XML.
 
 ## Summary
 
-The AIN Apex architecture provides a robust, scalable, and maintainable foundation for enterprise integrations. Key strengths include:
-
-1. **Separation of Concerns**: Clear layer boundaries
-2. **Reusability**: Common utilities and services
-3. **Testability**: 41% test class ratio
-4. **Security**: CRUD/FLS enforcement and input validation
-5. **Performance**: Bulkification and caching strategies
-6. **Maintainability**: Clear naming and documentation
+The AIN Apex architecture is a metadata-driven, multi-integration framework (Beeline, Indeed, RedDot) layered on top of a durable webhook request/retry subsystem, with programmatic (not static) permission set provisioning. The architecture has grown substantially since the package was last documented (2025-07): disposition sync-back, the screening/demographic question builder, and the webhook durability framework are all new, verified additions.

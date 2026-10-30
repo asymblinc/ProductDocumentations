@@ -2,283 +2,84 @@
 
 ## Overview
 
-The AIN package leverages 6 Custom Metadata Types to provide a flexible, runtime-configurable integration framework. These metadata types enable dynamic field mapping, credential management, and integration configuration without requiring code deployments.
+AIN ships **16 `CustomObject` entries** in `manifest/package.xml`: **6 true custom objects / platform events** that AIN owns outright, plus **10 Custom Metadata Type definitions**. (Prior documentation described only 6 CMDT types as "the custom objects" of the package — that section has been entirely rewritten below; it previously omitted every true custom object and 4 of the 10 CMDT types.)
 
-## Custom Metadata Types
+## True Custom Objects & Platform Event (6)
 
-### 1. AIN_Integration_Credentials__mdt
+### 1. `AIN_Candidate_Question__c`
+**Purpose**: Question library for Indeed Apply screening/demographic questions. Supports hierarchical/conditional questions via self-lookup.
+**Sharing Model**: Read (public read-only), `enableHistory=false`.
+**Key Fields**: `AIN_External_ID__c` (unique key used for upsert from `AIN_Default_Question_Template__mdt`), `AIN_Question__c`, `AIN_Category__c` (Screening/Demographic), `AIN_Data_Type__c`, `AIN_Options_JSON__c`, `AIN_Conditional_Rules_JSON__c`, `AIN_Partner_Type__c`, `AIN_Is_Required__c`, `AIN_Is_Pre_Selected__c`, `AIN_isDefault__c`, `AIN_Parent_Question__c` (self-lookup for hierarchical questions), `AIN_Display_Order__c`.
+**Seeded by**: `AIN_PostInstallScript.cloneDefaultQuestionTemplates()` on install, from `AIN_Default_Question_Template__mdt`.
 
-**Purpose**: Stores authentication credentials and connection settings for external systems.
+### 2. `AIN_Candidate_Response__c`
+**Purpose**: Stores a candidate's answer to a screening/demographic question for a specific application, with a point-in-time snapshot of the question so later edits to the question library don't retroactively change historical answers.
+**Sharing Model**: `ControlledByParent`.
+**Key Fields**: `AIN_Candidate_Question__c` (lookup), `AIN_Candidate_Question_Id__c`, `AIN_Question_Snapshot__c` (JSON snapshot), `AIN_Answer__c`, `AIN_Answer_Long_Text__c`, `AIN_Response_Type__c`, `AIN_Contact__c`, `AIN_Job__c`, `AIN_Job_Board_Application__c`, `AIN_Parent_Response__c` (self-lookup), `AIN_Level__c` (hierarchy depth).
 
-**Record Count**: 3 (Beeline, Indeed, Indeed_Apply)
+### 3. `AIN_Question_Assignment__c`
+**Purpose**: Junction object assigning specific `AIN_Candidate_Question__c` records to a specific `Job__c` (overriding the pre-selected default set for that job).
+**Key Fields**: `AIN_Job__c`, `AIN_Candidate_Question__c`, `AIN_Is_Default__c`, `AIN_Is_Required__c`, `AIN_Question_Category__c`, `AIN_Question_Text__c` (denormalized copies for list display).
+**Business logic**: If a job has no `AIN_Question_Assignment__c` records, `AIN_ScreeningQuestionController.getJobSpecificQuestions()` falls back to all pre-selected (`AIN_Is_Pre_Selected__c = true`) questions.
 
-#### Fields
+### 4. `AIN_External_Custom_Fields__c`
+**Purpose**: Captures VMS-supplied (Beeline) candidate custom field *definitions* per job posting — fields the client/VMS requires that aren't part of the standard mapping.
+**Key Fields**: `AIN_Job__c`, `AIN_Job_Posting_UID__c`, `AIN_Name__c`, `AIN_Mapped_Field_Name__c`, `AIN_Reference_Id__c`, `AIN_Reference_Key__c`, `AIN_Required__c`, `AIN_Type__c`, `AIN_Values__c`.
+**Populated by**: `AIN_BeelineCalloutServices.getCandidateCustomFields()` / `AIN_BeelineJobController.getExternalMappingData()` when a Beeline job posting is released.
+**Has a Custom Tab** (`AIN_External_Custom_Fields__c.tab-meta.xml`) and a dedicated page layout.
 
-| Field API Name | Type | Description | Encrypted |
-|---|---|---|---|
-| `AIN_Base_URL__c` | Text(255) | Base URL for the external system API | No |
-| `AIN_Client_Id__c` | Text(255) | OAuth client ID or API username | No |
-| `AIN_Client_Secret__c` | Text(255) | OAuth client secret or API key | Yes |
-| `AIN_Contact_Email__c` | Email | Support contact email for the integration | No |
-| `AIN_Contact_Type__c` | Text(50) | Type of contact (Support, Technical, Business) | No |
-| `AIN_Employer_Id__c` | Text(100) | External system employer/company identifier | No |
-| `AIN_Encryption_Key__c` | Text(255) | Additional encryption key for sensitive data | Yes |
-| `AIN_Webhook_URL__c` | URL | Webhook endpoint for incoming data | No |
+### 5. `AIN_Webhook_Request__c`
+**Purpose**: Durable log of every inbound webhook request (Beeline, Indeed Apply, RedDot) — the backbone of the retry/cleanup framework.
+**Key Fields**: `AIN_Platform_Name__c`, `AIN_Event_Type__c`, `AIN_Reference_Id__c`, `AIN_Salesforce_Id__c`, `AIN_Status__c` (Pending/Success/Failure), `AIN_Retry_Count__c`, `AIN_Error_Message__c`, `AIN_Preserve_Log__c` (excludes a record from scheduled cleanup).
+**List Views**: `All`, `Failed_Webhook_Request`, `Success_Webhook_Request`.
+**Quick Action**: `Retry_Webhooks` (manual retry, backed by `AIN_RetryWebhookController`).
+**Has a Custom Tab** and dedicated page layout.
 
-#### Configuration Records
+### 6. `AIN_Webhook_Event__e` (Platform Event, `HighVolume`, `PublishImmediately`)
+**Purpose**: Decouples webhook receipt from processing — published when a webhook needs asynchronous handling, consumed by the `AIN_Webhook_Platform_Event_Flow` Flow which invokes `AIN_PlatformEventController`'s `@InvocableMethod`.
+**Fields**: `AIN_Event_Type__c`, `AIN_PayLoad__c`, `AIN_Platform_Name__c`, `AIN_Reference_Id__c`.
 
-1. **Beeline**
-   - OAuth 2.0 credentials for VMS integration
-   - Production and sandbox endpoints
-   
-2. **Indeed**
-   - API key-based authentication
-   - Job publishing endpoint configuration
-   
-3. **Indeed_Apply**
-   - Webhook security credentials
-   - Application processing settings
+## Custom Metadata Types (10)
 
----
+See `AIN_Custom_Metadata_Documentation.md` for full field listings and record counts. Summary:
 
-### 2. AIN_Job_Mapping__mdt
-
-**Purpose**: Maps Salesforce Job fields to Indeed job board API fields.
-
-**Record Count**: 61
-
-#### Fields
-
-| Field API Name | Type | Description |
+| Metadata Type | Records | Purpose |
 |---|---|---|
-| `AIN_Field_Api_Name__c` | Text(255) | External API field name |
-| `AIN_Field_Label__c` | Text(255) | User-friendly field label |
-| `AIN_Field_Type__c` | Picklist | Data type (Text, Number, Date, Boolean, Picklist) |
-| `AIN_Is_Active__c` | Checkbox | Whether this mapping is currently active |
-| `AIN_Is_Required__c` | Checkbox | Whether this field is required by the external system |
-| `AIN_Is_Sync__c` | Checkbox | Whether to sync this field bidirectionally |
-| `AIN_Mapped_Field__c` | Text(255) | Salesforce field API name |
-| `AIN_Mapped_Object__c` | Text(50) | Salesforce object API name |
-| `AIN_Section__c` | Text(100) | Grouping section for UI display |
-| `AIN_Sync_Field_Api_Name__c` | Text(255) | Alternative field for sync operations |
+| `AIN_Job_Mapping__mdt` | 67 | `Job__c` ⇄ Indeed job fields |
+| `AIN_Vms_Job_Mapping__mdt` | 50 | `Job__c` ⇄ Beeline job fields |
+| `AIN_Vms_Job_Board_Mapping__mdt` | 35 | Candidate submission fields ⇄ Beeline |
+| `AIN_Job_Board_Mapping__mdt` | 32 | Inbound application fields ⇄ Salesforce |
+| `AIN_Disposition_Value_Map__mdt` | 24 | SF picklist value ⇄ Indeed disposition status |
+| `AIN_Disposition_Sync_Config__mdt` | 13 | Field-level disposition sync configuration |
+| `AIN_Indeed_Apply_Mapping__mdt` | 6 | Indeed Apply form configuration |
+| `AIN_Default_Question_Template__mdt` | 6 | Seed data for screening question library |
+| `AIN_Integration_Credentials__mdt` | 4 | Beeline / Indeed / Indeed_Apply / RedDot credentials |
+| `AIN_Webhook_Setup__mdt` | 1 | Webhook retry/cleanup scheduling |
+| **Total** | **240** | |
 
-#### Key Mappings
+**Note**: The prior "6 Custom Metadata Types" claim is stale — the package now has **10** CMDT types, and `AIN_Integration_Credentials__mdt` has 4 records (Beeline, Indeed, Indeed_Apply, **and RedDot** — RedDot was missing from prior documentation).
 
-- **Job Details**: title, description, company_name
-- **Location**: location_city_region_postal, location_country
-- **Compensation**: minimum_minor, maximum_minor, salary_currency
-- **Employment Type**: job_type, remote_type, working_hours
-- **Posting Details**: date_published, expiration_date
+## Extended ATS Base Objects (not owned by AIN, extended with AIN fields)
 
----
+- `Job__c` — 17 AIN fields (publishing/sync control; see `AIN_Custom_Fields_Documentation.md`)
+- `ATS_Applicant__c` — 7 AIN fields (VMS/disposition sync tracking)
+- `Job_Board_Application__c` — 4 AIN fields (application sync tracking)
+- `Contact` — 1 AIN field (`AIN_BE_Worker_Id__c`)
+- `ContentVersion` — 1 AIN field (`AIN_BE_Attachment_Id__c`)
 
-### 3. AIN_Job_Board_Mapping__mdt
+## Relationship Summary
 
-**Purpose**: Maps application data from job boards to Salesforce objects.
-
-**Record Count**: 28
-
-#### Fields
-
-| Field API Name | Type | Description |
-|---|---|---|
-| `AIN_Field_Api_Name__c` | Text(255) | Incoming field name from job board |
-| `AIN_Field_Label__c` | Text(255) | Display label |
-| `AIN_Field_Type__c` | Picklist | Expected data type |
-| `AIN_Is_Active__c` | Checkbox | Active status |
-| `AIN_Is_Required__c` | Checkbox | Required for processing |
-| `AIN_Mapped_Field__c` | Text(255) | Target Salesforce field |
-| `AIN_Mapped_Object__c` | Text(50) | Target Salesforce object |
-
-#### Application Processing Mappings
-
-- **Applicant Data**: Full name, email, phone, location
-- **Resume Information**: Skills, experience, education
-- **Application Metadata**: Applied date, source, job reference
-- **Resume JSON**: Structured resume data parsing
-
----
-
-### 4. AIN_Indeed_Apply_Mapping__mdt
-
-**Purpose**: Configuration for Indeed Apply webhook integration.
-
-**Record Count**: 6
-
-#### Fields
-
-| Field API Name | Type | Description |
-|---|---|---|
-| `AIN_Field_Api_Name__c` | Text(255) | Indeed Apply field identifier |
-| `AIN_Field_Label__c` | Text(255) | Field label for UI |
-| `AIN_Field_Type__c` | Text(50) | Field data type |
-| `AIN_IsMultiple__c` | Checkbox | Whether field accepts multiple values |
-| `AIN_Is_Active__c` | Checkbox | Active status |
-| `AIN_Is_Required__c` | Checkbox | Required by Indeed Apply |
-| `AIN_Possible_Values__c` | Long Text Area | JSON array of possible values |
-| `AIN_Selected_Values__c` | Long Text Area | Currently selected values |
-
-#### Configuration Types
-
-1. **Resume Requirements**: Resume required/optional settings
-2. **Cover Letter**: Cover letter configuration
-3. **Phone Requirements**: Phone number collection
-4. **Name Format**: Name field formatting rules
-5. **Optional Fields**: Additional data collection
-6. **Required Fields**: Mandatory information
-
----
-
-### 5. AIN_Vms_Job_Mapping__mdt
-
-**Purpose**: Maps Salesforce Job data to VMS (Beeline) job posting format.
-
-**Record Count**: 50
-
-#### Fields
-
-| Field API Name | Type | Description |
-|---|---|---|
-| `AIN_Field_Api_Name__c` | Text(255) | VMS API field name |
-| `AIN_Field_Label__c` | Text(255) | User-friendly label |
-| `AIN_Is_Active__c` | Checkbox | Mapping active status |
-| `AIN_Is_Required__c` | Checkbox | Required by VMS |
-| `AIN_Mapped_Field__c` | Text(255) | Source Salesforce field |
-| `AIN_Mapped_Object__c` | Text(50) | Source Salesforce object |
-
-#### VMS-Specific Mappings
-
-- **Job Information**: title, description, skills, location
-- **Client Details**: Client_Name, Client_Unique_Id
-- **Financial**: Bill rates, cost centers, currency
-- **Work Location**: Physical and tax location details
-- **Compliance**: Industry classifications, request types
-- **Supplier Info**: Supplier connections and UIDs
-
----
-
-### 6. AIN_Vms_Job_Board_Mapping__mdt
-
-**Purpose**: Maps candidate submission data for VMS systems.
-
-**Record Count**: 42
-
-#### Fields
-
-| Field API Name | Type | Description |
-|---|---|---|
-| `AIN_Field_Api_Name__c` | Text(255) | VMS candidate field |
-| `AIN_Field_Label__c` | Text(255) | Display label |
-| `AIN_Field_Type__c` | Picklist | Data type |
-| `AIN_Is_Active__c` | Checkbox | Active status |
-| `AIN_Is_Required__c` | Checkbox | Required for submission |
-| `AIN_Is_Sync__c` | Checkbox | Sync bidirectionally |
-| `AIN_Mapped_Field__c` | Text(255) | Salesforce field |
-| `AIN_Mapped_Object__c` | Text(50) | Salesforce object |
-| `AIN_Sync_Field_Api_Name__c` | Text(255) | Sync field override |
-
-#### Candidate Submission Mappings
-
-- **Personal Info**: First/Last name, DOB, gender, SSN (partial)
-- **Contact**: Email, phone, address components
-- **Rates**: Bill rates, pay rates, currency
-- **Availability**: Date available, resource type
-- **History**: Former employee/consultant flags
-- **IDs**: Candidate_Id, Worker_Id for tracking
-
----
-
-## Metadata Architecture Benefits
-
-### 1. Runtime Configuration
-- No code deployment needed for field mapping changes
-- Business users can modify mappings via UI
-- Instant activation of configuration changes
-
-### 2. Multi-System Support
-- Each system has dedicated metadata types
-- Consistent pattern across integrations
-- Easy to add new systems
-
-### 3. Security & Compliance
-- Encrypted storage for sensitive fields
-- Field-level security on metadata
-- Audit trail through SetupAuditTrail
-
-### 4. Scalability
-- Supports unlimited field mappings
-- Hierarchical configuration possible
-- Environment-specific settings
-
-## Configuration Management
-
-### Best Practices
-
-1. **Naming Conventions**
-   - Use consistent prefixes (AIN_)
-   - Descriptive field names
-   - Clear labeling for UI
-
-2. **Version Control**
-   - Export metadata regularly
-   - Track changes in source control
-   - Document configuration changes
-
-3. **Testing Strategy**
-   - Test mappings in sandbox first
-   - Validate data types match
-   - Check required field compliance
-
-4. **Performance**
-   - Index frequently queried fields
-   - Limit active mappings to necessary fields
-   - Cache metadata for better performance
-
-## Usage Examples
-
-### Retrieving Active Job Mappings
-```apex
-List<AIN_Job_Mapping__mdt> activeJobMappings = [
-    SELECT AIN_Field_Api_Name__c, 
-           AIN_Mapped_Field__c,
-           AIN_Field_Type__c
-    FROM AIN_Job_Mapping__mdt
-    WHERE AIN_Is_Active__c = true
-    ORDER BY AIN_Section__c, MasterLabel
-];
+```mermaid
+graph TD
+    JOB[Job__c] -->|1:M| QA[AIN_Question_Assignment__c]
+    QA -->|M:1| CQ[AIN_Candidate_Question__c]
+    CQ -->|self-lookup| CQ
+    CQ -->|1:M| CR[AIN_Candidate_Response__c]
+    CR -->|self-lookup| CR
+    CR -->|M:1| CONTACT[Contact]
+    CR -->|M:1| JOB
+    CR -->|M:1| JBA[Job_Board_Application__c]
+    JOB -->|1:M| ECF[AIN_External_Custom_Fields__c]
+    WR[AIN_Webhook_Request__c] -.->|published on failure/async need| WE[AIN_Webhook_Event__e]
+    WE -.->|triggers| FLOW[AIN_Webhook_Platform_Event_Flow]
 ```
-
-### Dynamic Field Transformation
-```apex
-public static Map<String, Object> transformJobData(Job__c job) {
-    Map<String, Object> transformedData = new Map<String, Object>();
-    
-    for (AIN_Job_Mapping__mdt mapping : activeJobMappings) {
-        if (job.get(mapping.AIN_Mapped_Field__c) != null) {
-            transformedData.put(
-                mapping.AIN_Field_Api_Name__c,
-                convertFieldValue(
-                    job.get(mapping.AIN_Mapped_Field__c),
-                    mapping.AIN_Field_Type__c
-                )
-            );
-        }
-    }
-    
-    return transformedData;
-}
-```
-
-## Maintenance & Monitoring
-
-### Regular Tasks
-1. Review inactive mappings quarterly
-2. Validate external system field changes
-3. Monitor mapping usage statistics
-4. Clean up obsolete configurations
-
-### Troubleshooting
-1. Check field type mismatches
-2. Verify required fields are mapped
-3. Ensure credentials are current
-4. Review activity logs for errors

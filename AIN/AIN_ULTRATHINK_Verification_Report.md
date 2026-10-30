@@ -2,377 +2,66 @@
 
 ## Executive Summary
 
-This verification report validates the completeness and accuracy of AIN package documentation against the source package.xml. The ULTRATHINK methodology ensures no components are overlooked and all documentation is comprehensive.
+This report documents a full re-verification of the AIN documentation set against the `asymbl-integration` repository, branch **`master`**, commit `3d45738447bd06a007212efa7a84ac09894d00d3` (2026-10-22), performed 2026-10-28/30. The prior documentation set (last substantively written ~2025-07-10) was found to be **materially stale and, in multiple sections, fabricated rather than derived from source** — it did not match either the actual `master` branch metadata or even the verified code patterns documented in this repo's own `.claude/rules/apex.md` and `.claude/rules/lwc.md` files (e.g., it invented classes like `AIN_FieldMappingService`, `AIN_ObjectMappingController` [as a *different* class with different responsibilities than the real one], `AIN_JobTriggerHandler.beforeDelete()`, `AIN_RetryHandler`, `AIN_MetadataCache`, `AIN_ActivityLogger`, `Activity_Log__c`, `Permission_Usage__c`, and three static permission sets that do not exist in the repository).
 
-**Verification Status**: ✅ **COMPLETE**  
-**Total Components Verified**: 416 (vs. initially reported 414)  
-**Documentation Coverage**: 100%  
-**Critical Gaps Identified**: 2 minor discrepancies resolved
+**Verification Status**: ✅ **COMPLETE — all 12 documents rewritten in place**
+**Prior Documented Component Total**: 416 (prior docs)
+**Verified Actual Component Total (package.xml, `master`)**: substantially larger and structurally different — see matrix below; a single "total" figure is not meaningful given multiple new metadata types not previously tracked at all (ExternalClientApplication, ExtlClntAppOauthSettings, ExternalCredential, NamedCredential, CspTrustedSite, CustomNotificationType)
 
----
+## Component Verification Matrix (package.xml, `master`, API v66.0)
 
-## Component Verification Matrix
-
-### 📊 Master Component Count Verification
-
-| Component Type | package.xml Count | Documented Count | Status | Notes |
-|---|---|---|---|---|
-| **ApexClass** | 41 | 41 | ✅ Complete | All classes and test classes documented |
-| **ApexTrigger** | 1 | 1 | ✅ Complete | AIN_JobObjectTrigger documented |
-| **CustomField** | 56 | 56 | ✅ Complete | All integration fields documented |
-| **CustomLabel** | 99 | 99 | ✅ Complete | All UI labels documented |
-| **CustomMetadata** | 184 | 184+ | ✅ Complete | All configuration records documented |
-| **CustomObject** | 6 | 6 | ✅ Complete | All metadata types documented |
-| **CustomTab** | 1 | 1 | ✅ Complete | Admin tab documented |
-| **Layout** | 6 | 6 | ✅ Complete | All metadata layouts documented |
-| **LightningComponentBundle** | 16 | 14→16 | ✅ **Corrected** | **Found 2 additional components** |
-| **PermissionSet** | 3 | 3 | ✅ Complete | All permission sets documented |
-| **QuickAction** | 1 | 1 | ✅ Complete | Job publishing action documented |
-| **RemoteSiteSetting** | 1 | 1 | ✅ Complete | Indeed endpoint documented |
-| **StaticResource** | 1 | 1 | ✅ Complete | UI resources documented |
-| **TOTAL** | **416** | **414→416** | ✅ **Verified** | **All components accounted for** |
-
----
-
-## Detailed Component Analysis
-
-### 1. ApexClass Verification (41 Components)
-
-#### Core Integration Classes ✅
-- `AIN_BeelineCalloutServices` - VMS integration
-- `AIN_IndeedCalloutService` - Job board integration  
-- `AIN_IndeedApplyRestResource` - Application processing
-- `AIN_JsonFlattener` - Data transformation
-- `AIN_RequestParser` - API request handling
-- `AIN_MetadataService` - Runtime configuration
-- `AIN_GraphQLGenerator` - Query generation
-
-#### Controller Classes ✅  
-- `AIN_BeelineAuthSettingController` - Beeline authentication UI
-- `AIN_IndeedAuthSettingController` - Indeed authentication UI
-- `AIN_ObjectMappingController` - Field mapping UI
-- `AIN_PublishJobQuickActionController` - Job publishing UI
-
-#### Utility Classes ✅
-- `AIN_Utility` - Common utilities
-- `AIN_Constants` - System constants
-- `AIN_TriggerHandler` - Trigger framework
-- `AIN_SelectOptionWrapper` - UI helpers
-
-#### Test Classes ✅ (17 Test Classes)
-All test classes present and accounted for with proper naming convention.
-
-**Status**: ✅ All 41 Apex classes documented in AIN_Apex_Architecture.md
-
-### 2. Custom Metadata Verification (184+ Records)
-
-#### Metadata Type Distribution ✅
-| Metadata Type | Record Count | Verification Status |
-|---|---|---|
-| `AIN_Integration_Credentials__mdt` | 3 | ✅ Beeline, Indeed, Indeed Apply |
-| `AIN_Job_Mapping__mdt` | 61 | ✅ Complete job field mappings |
-| `AIN_Job_Board_Mapping__mdt` | 28 | ✅ Application processing mappings |
-| `AIN_Indeed_Apply_Mapping__mdt` | 6 | ✅ Indeed Apply configuration |
-| `AIN_Vms_Job_Mapping__mdt` | 50 | ✅ VMS enterprise mappings |
-| `AIN_Vms_Job_Board_Mapping__mdt` | 42 | ✅ VMS candidate mappings |
-| **Total Records** | **190** | ✅ **All documented** |
-
-**Note**: The 184 vs 190 discrepancy represents the difference between active configuration records (184) versus total metadata records in package.xml (190).
-
-**Status**: ✅ All metadata documented in AIN_Custom_Metadata_Documentation.md
-
-### 3. Lightning Web Components Verification (16 Components)
-
-#### **CORRECTION IDENTIFIED**: Found 2 Additional Components
-
-**Previously Documented (14)**:
-- ✅ `ainAdminSetup` - Admin dashboard
-- ✅ `ainAuthenticationContainer` - Auth management
-- ✅ `ainBeelineAuthenticationContainer` - Beeline auth
-- ✅ `ainObjectMappingSetting` - Field mapping
-- ✅ `ainIndeedApplySettings` - Indeed Apply config
-- ✅ `ainActivityTimeline` - Activity monitoring
-- ✅ `ainPublishJobQuickAction` - Job publishing
-- ✅ `ainUtility` - Utility functions
-- ✅ `ainMultiselectCombobox` - Multi-select UI
-- ✅ `ainFieldMappingEntry` - Field mapping entry
-- ✅ `ainJobPortalCard` - Portal status card
-- ✅ `ainErrorDetailModal` - Error details
-- ✅ `ainAuthenticationSetting` - Generic auth
-- ✅ `ainBeelineAuthenticationSetting` - Beeline auth setting
-
-**Additional Components Found**:
-- 🆕 `ainIndeedFieldEntry` - Indeed field configuration
-- 🆕 `ainMultiSelectComboboxItem` - Multi-select item component
-
-**Status**: ✅ All 16 components now documented (documentation updated)
-
-### 4. Custom Fields Verification (56 Fields)
-
-#### Field Distribution by Object ✅
-| Object | Field Count | Verification Status |
-|---|---|---|
-| `Job__c` | 5 | ✅ Integration control fields |
-| `ATS_Applicant__c` | 2 | ✅ VMS identifier fields |
-| **Metadata Fields** | 49 | ✅ Configuration and mapping fields |
-| **Total** | **56** | ✅ **Complete** |
-
-**Critical Integration Fields Verified**:
-- ✅ `Job__c.AIN_Activity_History__c` - Activity logging
-- ✅ `Job__c.AIN_Source_Posting_Id__c` - External system ID
-- ✅ `ATS_Applicant__c.AIN_BE_Candidate_Id__c` - Beeline candidate ID
-- ✅ `ATS_Applicant__c.AIN_BE_Worker_Id__c` - Beeline worker ID
-
-**Status**: ✅ All 56 fields documented in AIN_Custom_Fields_Documentation.md
-
-### 5. Custom Labels Verification (99 Labels)
-
-#### Label Categories ✅
-| Category | Count | Examples |
-|---|---|---|
-| UI Labels | 25 | Save, Cancel, Reset buttons |
-| Configuration | 20 | Field mappings, settings |
-| Error Messages | 30 | Authentication, validation errors |
-| Success Messages | 15 | Completion notifications |
-| Help Text | 9 | Instructional content |
-| **Total** | **99** | **All documented** |
-
-**Status**: ✅ All 99 labels documented in AIN_Custom_Labels_Documentation.md
-
----
-
-## ULTRATHINK Gap Analysis
-
-### 🔍 Initial Discrepancies Found & Resolved
-
-#### 1. Lightning Component Count Discrepancy
-- **Issue**: Initial documentation showed 14 components, package.xml contains 16
-- **Root Cause**: Two components (`ainIndeedFieldEntry`, `ainMultiSelectComboboxItem`) not captured in initial scan
-- **Resolution**: ✅ Documentation updated to include all 16 components
-- **Impact**: Low - functionality was captured, naming was incomplete
-
-#### 2. Total Component Count Variance  
-- **Issue**: Initial count 414 vs actual 416
-- **Root Cause**: Lightning component undercount
-- **Resolution**: ✅ Corrected to 416 total components
-- **Impact**: None - all functionality documented
-
-#### 3. Metadata Records Count Clarification
-- **Issue**: 184 vs 190 metadata records
-- **Explanation**: 184 = active configuration records, 190 = total including test/inactive records
-- **Resolution**: ✅ Documentation clarified with both counts
-- **Impact**: None - all active configurations documented
-
-### ✅ Verification Completeness Checklist
-
-#### Documentation Coverage
-- ✅ **Package Overview** - Comprehensive executive summary created
-- ✅ **Architecture Documentation** - Complete system architecture documented
-- ✅ **Integration Workflows** - All data flows and processes documented
-- ✅ **Component Documentation** - Every component type covered
-- ✅ **Security Model** - Permission sets and access control documented
-- ✅ **Field Mappings** - All 184+ configuration records documented
-- ✅ **User Interface** - All 16 Lightning components documented
-- ✅ **Error Handling** - 99 custom labels and error patterns documented
-
-#### Technical Verification
-- ✅ **API Endpoints** - All external system integrations documented
-- ✅ **Authentication** - OAuth 2.0, API keys, webhook security documented
-- ✅ **Data Model** - ERD and object relationships documented
-- ✅ **Business Logic** - 41 Apex classes with purposes documented
-- ✅ **Configuration** - Metadata-driven approach fully explained
-- ✅ **Monitoring** - Activity logging and metrics documented
-
-#### Business Value Documentation
-- ✅ **ROI Analysis** - Quantifiable benefits documented
-- ✅ **Implementation Guide** - Deployment strategy documented
-- ✅ **Use Cases** - Integration scenarios documented
-- ✅ **Scalability** - Growth and expansion plans documented
-- ✅ **Compliance** - Security and audit capabilities documented
-
----
-
-## Component Cross-Reference Validation
-
-### External System Integration Points ✅
-```yaml
-Beeline VMS:
-  - Authentication: AIN_BeelineAuthSettingController ✅
-  - API Integration: AIN_BeelineCalloutServices ✅
-  - Field Mappings: AIN_Vms_Job_Mapping__mdt (50 records) ✅
-  - Candidate Submission: AIN_Vms_Job_Board_Mapping__mdt (42 records) ✅
-
-Indeed Job Board:
-  - Authentication: AIN_IndeedAuthSettingController ✅
-  - API Integration: AIN_IndeedCalloutService ✅
-  - Field Mappings: AIN_Job_Mapping__mdt (61 records) ✅
-  - Application Processing: AIN_Job_Board_Mapping__mdt (28 records) ✅
-
-Indeed Apply:
-  - Webhook Endpoint: AIN_IndeedApplyRestResource ✅
-  - Configuration: AIN_Indeed_Apply_Mapping__mdt (6 records) ✅
-  - UI Components: ainIndeedApplySettings, ainIndeedFieldEntry ✅
-```
-
-### Data Flow Validation ✅
-```yaml
-Job Publishing:
-  - Trigger: AIN_JobObjectTrigger ✅
-  - Controller: AIN_JobTriggerHandler ✅
-  - Quick Action: Job__c.Publish_Job ✅
-  - UI Component: ainPublishJobQuickAction ✅
-
-Application Processing:
-  - REST Resource: AIN_IndeedApplyRestResource ✅
-  - Data Parser: AIN_RequestParser ✅
-  - JSON Handler: AIN_JsonFlattener ✅
-  - Field Mapping: AIN_Job_Board_Mapping__mdt ✅
-
-VMS Integration:
-  - OAuth Handler: AIN_BeelineCalloutServices ✅
-  - Metadata Config: AIN_Integration_Credentials__mdt ✅
-  - Worker Tracking: AIN_BE_Worker_Id__c field ✅
-```
-
-### Security Model Validation ✅
-```yaml
-Permission Sets:
-  - AIN_Admin: Full administrative access ✅
-  - AIN_Beeline_Admin: VMS-specific access ✅
-  - AIN_IN_Integration_Guest_User: Limited API access ✅
-
-Encrypted Fields:
-  - AIN_Client_Secret__c: OAuth secrets ✅
-  - AIN_Encryption_Key__c: Additional encryption ✅
-
-Access Control:
-  - Field-level security documented ✅
-  - Object permissions documented ✅
-  - API endpoint security documented ✅
-```
-
----
-
-## Package Dependencies Verification
-
-### Dependencies on Other Asymbl Packages
-
-#### 1. ATS Package Dependency
-**Shared Objects**:
-- ✅ `ATS_Applicant__c` - Core applicant object from ATS package
-- ✅ `Job__c` - Job posting object from ATS package
-- ✅ Standard `Contact` object extended by ATS
-
-**Integration Points**:
-- Application workflow triggers
-- Interview scheduling integration
-- Placement tracking
-
-#### 2. ASM Package Integration
-**Potential Touchpoints**:
-- Resume parsing results could feed AIN
-- Search results might trigger publishing
-- Candidate matching scores for VMS
-
-#### 3. TIME Package Synergy
-**Future Integration**:
-- Worker time tracking for VMS placements
-- Rate card synchronization
-- Timesheet automation
-
-#### 4. ARA Package Collaboration
-**AI Enhancement Opportunities**:
-- AI-powered job description optimization
-- Intelligent candidate screening before VMS submission
-- Predictive placement analytics
-
----
-
-## Final ULTRATHINK Assessment
-
-### ✅ Completeness Score: 100%
-
-**Category Scores**:
-- Component Discovery: 100% (416/416 components)
-- Documentation Coverage: 100% (All component types)
-- Architecture Analysis: 100% (Complete system design)
-- Integration Mapping: 100% (All external systems)
-- Security Documentation: 100% (Complete security model)
-- Business Value: 100% (ROI and implementation guide)
-- Package Dependencies: 100% (All dependencies documented)
-
-### 🎯 Quality Metrics
-
-| Metric | Target | Achieved | Status |
+| Component Type | Prior Doc Count | Verified Count | Status |
 |---|---|---|---|
-| Component Coverage | 100% | 100% | ✅ |
-| Documentation Depth | Complete | Complete | ✅ |
-| Technical Accuracy | High | High | ✅ |
-| Business Relevance | High | High | ✅ |
-| Maintainability | High | High | ✅ |
-| Dependency Mapping | Complete | Complete | ✅ |
+| ApexClass | 41 | **106** | ⚠ Materially understated (43 of 106 are test classes) |
+| ApexTrigger | 1 | **3** | ⚠ Understated — `AIN_ApplicantObjectTrigger`, `AIN_JBAObjectTrigger` were missing |
+| ApexPage | 0 (not tracked) | **2** | ⚠ Missing entirely from prior docs |
+| CustomField | 56 | **175** | ⚠ Materially understated |
+| CustomLabel | 99 | **296** | ⚠ Materially understated |
+| CustomMetadata | 184–190 | **240** | ⚠ Understated; 4 new CMDT types |
+| CustomObject | 6 | **16** | ⚠ Prior docs counted only CMDT types; 6 true objects/platform event were entirely undocumented |
+| CustomTab | 1 | **3** | ⚠ `AIN_External_Custom_Fields__c`, `AIN_Webhook_Request__c` tabs missing |
+| CustomNotificationType | 0 (not tracked) | **1** | ⚠ Missing (`Beeline_Job`) |
+| Flow / FlowDefinition | 0 (not tracked) | **2 / 1** | ⚠ Missing entirely (`AIN_Webhook_Platform_Event_Flow`, `Flow_For_Update_RedDot_Job_Source`) |
+| Layout | 6 | **9** | ⚠ Understated |
+| LightningComponentBundle | 16 (after prior "correction") | **31** | ⚠ Materially understated — nearly double |
+| ListView | 0 (not tracked) | **6** | ⚠ Missing entirely |
+| PermissionSet | 3 | **0 (static)** | ❌ **Fabricated** — no static PermissionSet metadata exists; access is provisioned programmatically (4 runtime permission sets) |
+| QuickAction | 1 | **3** | ⚠ `Publish_Job_RedDot`, `Retry_Webhooks` missing |
+| RemoteSiteSetting | 1 | **2** | ⚠ `IndeedBaseUrl_Simulated` missing |
+| StaticResource | 1 | **1** | ✅ Correct |
+| ExternalClientApplication / ExtlClntAppOauthSettings | 0 (not tracked) | **1 / 1** | ⚠ Missing entirely (Indeed OAuth client app) |
+| ExternalCredential / NamedCredential | 0 (not tracked) | **1 / 1** | ⚠ Missing entirely (`AIN_AWS_Indeed_Integration`) |
+| CspTrustedSite | 0 (not tracked) | **1** | ⚠ Missing entirely (`Reddot_JobSplice`, RedDot) |
 
-### 📋 Validation Summary
+## Major Functional Gaps Found (entire features undocumented)
 
-**✅ PASS CRITERIA MET**:
-- All 416 components identified and documented
-- No critical functionality gaps
-- Complete integration workflow documentation
-- Comprehensive security model
-- Executive-level package overview
-- Technical implementation details
-- Business value quantification
-- Package dependencies mapped
+1. **RedDot integration** — a third job board/VMS integration (auth controller, job controller, webhook handler, Quick Action, Flow, CSP Trusted Site, LWCs) did not exist in the prior documented version at all.
+2. **Indeed Disposition Sync-back** — `AIN_DispositionSyncService`/`Helper`/`Queueable`, 2 new CMDT types (37 combined records), and the disposition mapping LWCs.
+3. **Screening/Demographic Question Builder** — 3 new custom objects (`AIN_Candidate_Question__c`, `AIN_Candidate_Response__c`, `AIN_Question_Assignment__c`), 1 new CMDT type, a guest-accessible Visualforce page, and 4+ new LWCs.
+4. **Durable Webhook Request/Retry Framework** — `AIN_Webhook_Request__c`, `AIN_Webhook_Event__e` platform event, `AIN_WebhookRetryBatch`, `AIN_WebhookDeleteBatch`, `AIN_WebhookConfigurationController`, 1 new CMDT type, 3 new LWCs, 1 new Flow.
+5. **`AIN_External_Custom_Fields__c`** — VMS candidate custom-field capture object, entirely new.
+6. **Programmatic Permission Set provisioning** — the single most consequential correction: the prior documentation's entire Permission Sets document described static metadata that has never existed in this repository.
 
-**🔄 CONTINUOUS MONITORING**:
-- Documentation structure supports future updates
-- Metadata-driven configuration documented for maintainability
-- Component relationships clearly mapped
-- External dependencies documented
-- Cross-package integration points identified
+## Verification Methodology Used
 
----
+1. Confirmed the on-disk working tree's actual branch state via `git status`/`git log` (tree was on `packaging`, 16 commits behind; `master` was read via `git show master:<path>` and direct file reads after confirming the local `master` ref matched `origin/master`).
+2. Read the complete `manifest/package.xml` (read in full, no truncation) and parsed every `<types>` block programmatically to get exact per-type counts — not estimated or sampled.
+3. Cross-verified `CustomField`, `CustomLabel`, and `CustomMetadata` counts against `force-app/main/default/customMetadata/` file counts and `CustomLabels.labels-meta.xml` label-tag counts, not just package.xml member counts, to guard against package.xml/source drift.
+4. Read live Apex source (`AIN_PermissionSetController`, `AIN_PostInstallScript`, `AIN_Constants`, `AIN_DispositionSyncService`, `AIN_ScreeningQuestionController`, `AIN_WebhookRetryBatch`, `AIN_RedDotJobController`) rather than inferring behavior from naming conventions alone.
+5. Searched explicitly for a `permissionsets/` directory and confirmed its complete absence before concluding the prior Permission Sets documentation was fabricated.
+6. Cross-checked every class/object/field name claimed in prior documentation against the verified package.xml member list and flagged every non-matching name as fabricated (see per-document "Corrections vs. prior documentation" sections).
 
-## Recommendations
+## Confidence Assessment
 
-### Immediate Actions: None Required ✅
-The documentation is complete and comprehensive. All ULTRATHINK verification criteria have been met.
+| Area | Confidence | Notes |
+|---|---|---|
+| Component counts (package.xml-sourced) | **High** | Directly parsed from `manifest/package.xml`, cross-verified against source directory file counts |
+| Apex class categorization | **High** | Read actual class headers/bodies for every class mentioned by name |
+| CMDT record-level detail (sample field values) | **Medium-High** | Read representative `.md-meta.xml` files (Integration Credentials ×4, Webhook Setup) directly; did not open all 240 individual records |
+| LWC component behavior/purpose descriptions | **Medium** | Verified existence and top-of-file imports for all newly-added components; did not read full component logic for every one of the 31 |
+| Flow internals (`AIN_Webhook_Platform_Event_Flow`, `Flow_For_Update_RedDot_Job_Source`) | **Low-Medium** | Confirmed existence and referencing context from Apex (`AIN_PlatformEventController`); did not open the flow XML definitions themselves |
+| Field-type precision (Text vs Picklist vs Number, lengths) in Custom Fields doc | **Low-Medium** | Inferred from naming/usage context in Apex rather than reading every individual `.field-meta.xml`; flagged explicitly in that document |
 
-### Future Enhancements
-1. **Automated Validation**: Implement automated testing to validate documentation against package.xml changes
-2. **Version Control**: Establish versioning strategy for documentation updates
-3. **Performance Monitoring**: Add integration performance metrics to documentation
-4. **User Feedback**: Collect feedback on documentation effectiveness
-5. **Cross-Package Testing**: Validate integration points with other Asymbl packages
+## Recommendation
 
-### Maintenance Strategy
-1. **Quarterly Reviews**: Regular validation against package changes
-2. **Component Updates**: Automatic notification when new components added
-3. **Documentation Sync**: CI/CD integration for documentation updates
-4. **Dependency Tracking**: Monitor changes in dependent packages
-
----
-
-## ULTRATHINK Certification
-
-**✅ VERIFICATION COMPLETE**
-
-This AIN package documentation has been verified against the ULTRATHINK methodology and meets all requirements for:
-- **Completeness**: All 416 components documented
-- **Accuracy**: Technical details verified against source
-- **Comprehensiveness**: Business and technical perspectives covered
-- **Maintainability**: Structure supports future updates
-- **Usability**: Clear navigation and reference materials
-- **Integration**: Dependencies with other packages documented
-
-**Verified By**: ULTRATHINK Methodology v1.0  
-**Verification Date**: [Current Date]  
-**Package Version**: Current (416 components)  
-**Documentation Status**: ✅ COMPLETE AND CERTIFIED
-
----
-
-*ULTRATHINK Verification Report v1.0*  
-*Package: AIN (Asymbl Integration)*  
-*Total Components Verified: 416*  
-*Documentation Quality: Enterprise Grade*
+Given the scale of drift discovered (component counts roughly 2–3x prior figures across most types, plus entire undocumented subsystems), this documentation set should be re-verified against `master` on a materially shorter cadence than the ~15-month gap observed here — ideally tied to AIN package version bumps (`sfdx-project.json` `versionNumber`) rather than a fixed calendar interval.

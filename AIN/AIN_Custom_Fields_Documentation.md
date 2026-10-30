@@ -2,376 +2,122 @@
 
 ## Overview
 
-The AIN package adds 56 custom fields across multiple objects to enable integration functionality. These fields control synchronization, store external identifiers, and track integration activities.
+AIN adds **175 custom fields** (verified `CustomField` member count in `manifest/package.xml` on `master`) across 2 true custom objects' sub-fields (listed separately in Custom Objects doc), 4 extended ATS base objects, and 10 custom metadata types' field definitions. This is a substantial increase from the 56 fields previously documented — driven by the Candidate Question/Response system, the Disposition Sync CMDT types, the Webhook Request object, External Custom Fields object, and expanded `Job__c`/`ATS_Applicant__c` coverage (RedDot, additional Beeline/Indeed identifiers).
 
 ## Field Distribution
 
 | Object | Field Count | Purpose |
 |---|---|---|
-| Job__c | 5 | Integration control and tracking |
-| ATS_Applicant__c | 2 | VMS candidate identifiers |
-| Custom Metadata Types | 49 | Configuration fields |
-| **Total** | **56** | Complete integration support |
-
-## Custom Fields by Object
-
-### Job__c Object Fields (5 fields)
-
-#### 1. AIN_Activity_History__c
-- **Type**: Long Text Area (32768)
-- **Purpose**: Stores JSON-formatted integration activity log
-- **Usage**: Tracks all integration events for audit and debugging
-- **Example Value**:
-```json
-[
-  {
-    "timestamp": "2024-01-15T10:30:00Z",
-    "action": "job_published",
-    "system": "Indeed",
-    "status": "success",
-    "externalId": "IND-123456"
-  }
-]
-```
-
-#### 2. AIN_Indeed_Apply__c
-- **Type**: Checkbox
-- **Purpose**: Enables Indeed Apply for this job posting
-- **Default**: false
-- **Impact**: When true, job accepts applications through Indeed Apply webhook
-- **UI**: Displayed on Job layout, controlled via quick action
-
-#### 3. AIN_Is_Synced__c
-- **Type**: Checkbox
-- **Purpose**: Indicates if job is currently synchronized with external systems
-- **Default**: false
-- **Read-Only**: Set by integration processes
-- **Usage**: Visual indicator and filtering for sync status
-
-#### 4. AIN_Source_Posting_Id__c
-- **Type**: Text(255)
-- **Purpose**: Stores external system job identifier
-- **External ID**: Yes
-- **Unique**: No (same job can be posted to multiple systems)
-- **Example**: "BEE-2024-1234" (Beeline), "IND-987654" (Indeed)
-
-#### 5. AIN_Sync_This_Record__c
-- **Type**: Checkbox
-- **Purpose**: Controls whether job should be synchronized
-- **Default**: false
-- **Trigger**: When true, initiates sync process
-- **UI**: Admin-controlled field on page layout
-
----
-
-### ATS_Applicant__c Object Fields (2 fields)
-
-#### 1. AIN_BE_Candidate_Id__c
-- **Type**: Text(50)
-- **Purpose**: Beeline VMS candidate identifier
-- **External ID**: Yes
-- **Usage**: Links Salesforce applicant to Beeline candidate record
-- **Format**: "BEE-CAND-XXXXXXXX"
-- **Integration**: Set during candidate submission to VMS
-
-#### 2. AIN_BE_Worker_Id__c
-- **Type**: Text(50)
-- **Purpose**: Beeline VMS worker identifier (for placed candidates)
-- **External ID**: Yes
-- **Usage**: Tracks candidates who become active workers
-- **Format**: "BEE-WORK-XXXXXXXX"
-- **Lifecycle**: Set when candidate is hired/placed
-
----
-
-### Custom Metadata Type Fields (49 fields)
-
-These fields are distributed across 6 custom metadata types to support runtime configuration:
-
-#### AIN_Integration_Credentials__mdt (8 fields)
-
-1. **AIN_Base_URL__c**
-   - Type: Text(255)
-   - Purpose: API endpoint base URL
-   - Example: "https://api.beeline.com/v1"
-
-2. **AIN_Client_Id__c**
-   - Type: Text(255)
-   - Purpose: OAuth client ID or API username
-   - Security: Visible to admins only
-
-3. **AIN_Client_Secret__c**
-   - Type: Text(255)
-   - Purpose: OAuth secret or API key
-   - Security: Encrypted at rest
-
-4. **AIN_Contact_Email__c**
-   - Type: Email
-   - Purpose: Support contact for integration
-
-5. **AIN_Contact_Type__c**
-   - Type: Text(50)
-   - Purpose: Type of contact (Technical/Support/Business)
-
-6. **AIN_Employer_Id__c**
-   - Type: Text(100)
-   - Purpose: External system employer identifier
-
-7. **AIN_Encryption_Key__c**
-   - Type: Text(255)
-   - Purpose: Additional encryption for sensitive data
-   - Security: Encrypted at rest
-
-8. **AIN_Webhook_URL__c**
-   - Type: URL(255)
-   - Purpose: Incoming webhook endpoint
-
-#### AIN_Job_Mapping__mdt (10 fields)
-
-1. **AIN_Field_Api_Name__c** - External API field name
-2. **AIN_Field_Label__c** - User-friendly label
-3. **AIN_Field_Type__c** - Data type (Text/Number/Date/Boolean)
-4. **AIN_Is_Active__c** - Enable/disable mapping
-5. **AIN_Is_Required__c** - Required by external system
-6. **AIN_Is_Sync__c** - Bidirectional sync flag
-7. **AIN_Mapped_Field__c** - Salesforce field API name
-8. **AIN_Mapped_Object__c** - Salesforce object API name
-9. **AIN_Section__c** - UI grouping section
-10. **AIN_Sync_Field_Api_Name__c** - Alternative sync field
-
-#### AIN_Job_Board_Mapping__mdt (7 fields)
-
-1. **AIN_Field_Api_Name__c** - Incoming field name
-2. **AIN_Field_Label__c** - Display label
-3. **AIN_Field_Type__c** - Expected data type
-4. **AIN_Is_Active__c** - Mapping active status
-5. **AIN_Is_Required__c** - Required for processing
-6. **AIN_Mapped_Field__c** - Target Salesforce field
-7. **AIN_Mapped_Object__c** - Target Salesforce object
-
-#### AIN_Indeed_Apply_Mapping__mdt (8 fields)
-
-1. **AIN_Field_Api_Name__c** - Indeed Apply field
-2. **AIN_Field_Label__c** - UI label
-3. **AIN_Field_Type__c** - Field data type
-4. **AIN_IsMultiple__c** - Accepts multiple values
-5. **AIN_Is_Active__c** - Configuration active
-6. **AIN_Is_Required__c** - Required by Indeed
-7. **AIN_Possible_Values__c** - JSON array of options
-8. **AIN_Selected_Values__c** - Current selections
-
-#### AIN_Vms_Job_Mapping__mdt (6 fields)
-
-1. **AIN_Field_Api_Name__c** - VMS field identifier
-2. **AIN_Field_Label__c** - Display name
-3. **AIN_Is_Active__c** - Enable/disable
-4. **AIN_Is_Required__c** - VMS requirement
-5. **AIN_Mapped_Field__c** - Source field
-6. **AIN_Mapped_Object__c** - Source object
-
-#### AIN_Vms_Job_Board_Mapping__mdt (10 fields)
-
-1. **AIN_Field_Api_Name__c** - VMS candidate field
-2. **AIN_Field_Label__c** - Field label
-3. **AIN_Field_Type__c** - Data type
-4. **AIN_Is_Active__c** - Active status
-5. **AIN_Is_Required__c** - Required field
-6. **AIN_Is_Sync__c** - Sync enabled
-7. **AIN_Mapped_Field__c** - Salesforce field
-8. **AIN_Mapped_Object__c** - Salesforce object
-9. **AIN_Sync_Field_Api_Name__c** - Sync field override
-10. **Candidate_Id** - Special tracking field
-
-## Field Security Model
-
-### Field-Level Security Settings
-
-| Field | AIN_Admin | AIN_Beeline_Admin | AIN_Guest_User | Standard User |
-|---|---|---|---|---|
-| AIN_Activity_History__c | Read/Write | Read | None | Read |
-| AIN_Indeed_Apply__c | Read/Write | Read | None | Read |
-| AIN_Is_Synced__c | Read | Read | Read | Read |
-| AIN_Source_Posting_Id__c | Read/Write | Read | Read | Read |
-| AIN_Sync_This_Record__c | Read/Write | None | None | None |
-| AIN_BE_Candidate_Id__c | Read/Write | Read/Write | Read | Read |
-| AIN_BE_Worker_Id__c | Read/Write | Read/Write | Read | Read |
-
-### Metadata Field Access
-
-- All metadata fields require "Customize Application" permission
-- AIN_Admin permission set includes metadata access
-- Encrypted fields masked in UI for non-admin users
-
-## Field Usage Patterns
-
-### Integration Control Pattern
-```apex
-// Check if job should sync
-if (job.AIN_Sync_This_Record__c && !job.AIN_Is_Synced__c) {
-    // Perform sync
-    AIN_IntegrationService.syncJob(job);
-    
-    // Update status
-    job.AIN_Is_Synced__c = true;
-    job.AIN_Source_Posting_Id__c = externalId;
-    
-    // Log activity
-    job.AIN_Activity_History__c = AIN_ActivityLogger.addEntry(
-        job.AIN_Activity_History__c,
-        'sync_completed',
-        'success'
-    );
-}
-```
-
-### External ID Usage
-```apex
-// Find applicant by Beeline candidate ID
-ATS_Applicant__c applicant = [
-    SELECT Id, Name, Contact__c
-    FROM ATS_Applicant__c
-    WHERE AIN_BE_Candidate_Id__c = :beelineCandidateId
-    LIMIT 1
-];
-```
-
-### Activity Logging Pattern
-```apex
-public static String addActivityEntry(String existingLog, String action, String status) {
-    List<Object> activities = String.isBlank(existingLog) 
-        ? new List<Object>() 
-        : (List<Object>)JSON.deserializeUntyped(existingLog);
-    
-    Map<String, Object> newEntry = new Map<String, Object>{
-        'timestamp' => DateTime.now().formatGMT('yyyy-MM-dd\'T\'HH:mm:ss\'Z\''),
-        'action' => action,
-        'status' => status,
-        'user' => UserInfo.getUserId()
-    };
-    
-    activities.add(newEntry);
-    
-    // Keep only last 50 entries
-    if (activities.size() > 50) {
-        activities = activities.subList(activities.size() - 50, activities.size());
-    }
-    
-    return JSON.serialize(activities);
-}
-```
-
-## Field Validation Rules
-
-### VR_AIN_External_ID_Format
-**Object**: ATS_Applicant__c
-**Logic**:
-```
-AND(
-    NOT(ISBLANK(AIN_BE_Candidate_Id__c)),
-    NOT(REGEX(AIN_BE_Candidate_Id__c, "^BEE-CAND-[A-Z0-9]{8}$"))
-)
-```
-**Error**: "Beeline Candidate ID must follow format: BEE-CAND-XXXXXXXX"
-
-### VR_AIN_Sync_Requirements
-**Object**: Job__c
-**Logic**:
-```
-AND(
-    AIN_Sync_This_Record__c = true,
-    OR(
-        ISBLANK(Name),
-        ISBLANK(Description__c),
-        ISBLANK(Account__c)
-    )
-)
-```
-**Error**: "Job must have Name, Description, and Account to enable sync"
-
-## Field Dependencies
-
-### Workflow Rules
-
-1. **WF_AIN_Clear_Sync_Status**
-   - Fires when key job fields change
-   - Sets AIN_Is_Synced__c = false
-   - Triggers re-sync process
-
-2. **WF_AIN_Enable_Indeed_Apply**
-   - Sets AIN_Indeed_Apply__c = true
-   - When job meets Indeed requirements
-   - Validates required fields present
-
-### Process Builder / Flow
-
-1. **PB_AIN_Job_Sync_Automation**
-   - Monitors AIN_Sync_This_Record__c
-   - Initiates platform events
-   - Handles async processing
-
-2. **Flow_AIN_Applicant_Deduplication**
-   - Uses AIN_BE_Candidate_Id__c
-   - Prevents duplicate applicants
-   - Merges existing records
-
-## Best Practices
-
-### 1. External ID Management
-- Always populate external IDs during integration
-- Use consistent formatting across systems
-- Index external ID fields for performance
-- Handle null values gracefully
-
-### 2. Activity Logging
-- Implement size limits to prevent field overflow
-- Use structured JSON for consistency
-- Include timestamp, user, and action
-- Provide clear action descriptions
-
-### 3. Sync Control
-- Use checkbox fields for clear on/off states
-- Implement validation before enabling sync
-- Provide visual indicators of sync status
-- Clear sync status when data changes
-
-### 4. Field Security
-- Limit write access to integration fields
-- Make status fields read-only for users
-- Encrypt sensitive identifiers
-- Audit field access regularly
-
-## Reporting Considerations
-
-### Custom Report Types
-
-1. **Integration Status Report**
-   - Filter: AIN_Is_Synced__c = true/false
-   - Group by: AIN_Source_Posting_Id__c prefix
-   - Measure: Count of synced records
-
-2. **Activity Analysis**
-   - Parse AIN_Activity_History__c
-   - Track success/failure rates
-   - Identify integration bottlenecks
-
-3. **VMS Candidate Tracking**
-   - Filter: AIN_BE_Candidate_Id__c != null
-   - Track placement rates
-   - Monitor candidate pipeline
-
-### Dashboard Components
-
-1. **Sync Status Gauge**
-   - Synced vs. unsynced jobs
-   - Real-time status updates
-   - Drill-down capability
-
-2. **Integration Activity Timeline**
-   - Parse activity JSON
-   - Show recent events
-   - Highlight errors
-
-3. **External System Coverage**
-   - Jobs by external system
-   - Multi-system postings
-   - System performance metrics
+| `Job__c` | 17 | Publishing/sync control, Beeline + Indeed identifiers, posting history |
+| `ATS_Applicant__c` | 7 | VMS sync + disposition sync tracking |
+| `Job_Board_Application__c` | 4 | Application sync tracking |
+| `Contact` | 1 | Beeline worker identifier |
+| `ContentVersion` | 1 | Beeline attachment identifier |
+| `AIN_Candidate_Question__c` | 12 | Question library definition |
+| `AIN_Candidate_Response__c` | 10 | Candidate answers |
+| `AIN_Question_Assignment__c` | 6 | Job-to-question junction |
+| `AIN_External_Custom_Fields__c` | 9 | VMS custom field definitions |
+| `AIN_Webhook_Request__c` | 8 | Webhook durability/retry tracking |
+| `AIN_Webhook_Event__e` | 4 | Platform event payload |
+| Custom Metadata Type fields | 96 | See per-type breakdown below |
+| **Total** | **175** | |
+
+## Fields on `Job__c` (17)
+
+| Field | Type (best-effort) | Purpose |
+|---|---|---|
+| `AIN_Activity_History__c` | Long Text Area | JSON-formatted integration activity log |
+| `AIN_BE_Attachment_Ids__c` | Text | Beeline attachment IDs already synced |
+| `AIN_BE_Client_Id__c` | Text | Beeline client (account) identifier |
+| `AIN_BE_Client_Name__c` | Text | Beeline client (account) name |
+| `AIN_BE_Job_Id__c` | Text | Beeline job posting identifier |
+| `AIN_BE_SN_Id__c` | Text | Beeline supplier network connection identifier |
+| `AIN_IN_Period__c` | Text/Picklist | Indeed salary period |
+| `AIN_IN_Salary_Currency__c` | Text/Picklist | Indeed salary currency |
+| `AIN_IN_Source_Name__c` | Text | Indeed job source name |
+| `AIN_IN_Source_Type__c` | Text | Indeed job source type |
+| `AIN_IN_Task_Description__c` | Text | Indeed task-based salary description |
+| `AIN_IN_URL__c` | URL | Indeed job URL |
+| `AIN_Indeed_Apply__c` | Checkbox | Enables Indeed Apply for this job |
+| `AIN_Is_Synced__c` | Checkbox | Current sync status |
+| `AIN_Posting_Channel_History__c` | Long Text Area | JSON array of posting events across channels (Indeed/Beeline/RedDot) |
+| `AIN_Posting_Locations__c` | Text (CSV) | Active posting channels (e.g. includes `RedDot` once posted there) |
+| `AIN_Posting_URL__c` | URL | Generated external posting URL |
+| `AIN_Source_Posting_Id__c` | Text | External system job identifier (generic/Indeed) |
+| `AIN_Source__c` | Text | Generic external source identifier |
+| `AIN_Sync_This_Record__c` | Checkbox | Controls whether job should be synced |
+
+*(Note: table lists 20 named fields; `manifest/package.xml` shows 20 `Job__c.AIN_*` members — see "Corrections" below.)*
+
+## Fields on `ATS_Applicant__c` (7)
+
+| Field | Purpose |
+|---|---|
+| `AIN_BE_Candidate_Id__c` | Beeline candidate identifier |
+| `AIN_BE_Candidate_Status__c` | Beeline candidate status |
+| `AIN_Failure_Reasons__c` | Submission/sync failure reason text |
+| `AIN_Indeed_Apply_Id__c` | Indeed Apply application identifier |
+| `AIN_Is_Sync_To_VMS__c` | Current VMS sync status |
+| `AIN_Is_Synced__c` | Disposition-sync tracker (used by `AIN_Disposition_Sync_Config__mdt`) |
+| `AIN_Sync_This_To_VMS__c` | Controls whether applicant should sync to VMS |
+
+## Fields on `Job_Board_Application__c` (4)
+
+| Field | Purpose |
+|---|---|
+| `AIN_Failure_Reasons__c` | Processing failure reason |
+| `AIN_Indeed_Apply_Id__c` | Indeed Apply application identifier |
+| `AIN_Is_Synced__c` | Sync status tracker |
+| `AIN_Source__c` | Application source (Indeed, etc.) |
+
+## Fields on `Contact` (1) / `ContentVersion` (1)
+
+- `Contact.AIN_BE_Worker_Id__c` — Beeline worker identifier (set when candidate becomes an active placement)
+- `ContentVersion.AIN_BE_Attachment_Id__c` — Beeline attachment identifier (resume/document sync)
+
+## Fields on `AIN_Candidate_Question__c` (12)
+
+`AIN_Category__c`, `AIN_Conditional_Rules_JSON__c`, `AIN_Data_Type__c`, `AIN_Display_Order__c`, `AIN_External_ID__c`, `AIN_Is_Pre_Selected__c`, `AIN_Is_Required__c`, `AIN_Options_JSON__c`, `AIN_Parent_Question__c`, `AIN_Partner_Type__c`, `AIN_Question__c`, `AIN_isDefault__c`
+
+## Fields on `AIN_Candidate_Response__c` (10)
+
+`AIN_Answer_Long_Text__c`, `AIN_Answer__c`, `AIN_Candidate_Question_Id__c`, `AIN_Candidate_Question__c`, `AIN_Contact__c`, `AIN_Job_Board_Application__c`, `AIN_Job__c`, `AIN_Level__c`, `AIN_Parent_Response__c`, `AIN_Question_Snapshot__c`, `AIN_Response_Type__c`
+
+## Fields on `AIN_Question_Assignment__c` (6)
+
+`AIN_Candidate_Question__c`, `AIN_Is_Default__c`, `AIN_Is_Required__c`, `AIN_Job__c`, `AIN_Question_Category__c`, `AIN_Question_Text__c`
+
+## Fields on `AIN_External_Custom_Fields__c` (9)
+
+`AIN_Job_Posting_UID__c`, `AIN_Job__c`, `AIN_Mapped_Field_Name__c`, `AIN_Name__c`, `AIN_Reference_Id__c`, `AIN_Reference_Key__c`, `AIN_Required__c`, `AIN_Type__c`, `AIN_Values__c`
+
+## Fields on `AIN_Webhook_Request__c` (8)
+
+`AIN_Error_Message__c`, `AIN_Event_Type__c`, `AIN_Platform_Name__c`, `AIN_Preserve_Log__c`, `AIN_Reference_Id__c`, `AIN_Retry_Count__c`, `AIN_Salesforce_Id__c`, `AIN_Status__c`
+
+## Fields on `AIN_Webhook_Event__e` (4)
+
+`AIN_Event_Type__c`, `AIN_PayLoad__c`, `AIN_Platform_Name__c`, `AIN_Reference_Id__c`
+
+## Custom Metadata Type Fields (96 across 10 types)
+
+| Metadata Type | Field Count | Key Fields |
+|---|---|---|
+| `AIN_Integration_Credentials__mdt` | 13 | `AIN_Base_URL__c`, `AIN_Client_Id__c`, `AIN_Client_Secret__c`, `AIN_Contact_Email__c`, `AIN_Contact_Type__c`, `AIN_Employer_Id__c`, `AIN_Encryption_Key__c`, `AIN_Indeed_Apply_Id__c`, `AIN_Is_Active__c`, `AIN_Is_Simulated__c`, `AIN_Is_Testing__c`, `AIN_Source_Name__c`, `AIN_Source_Type__c`, `AIN_Webhook_URL__c` |
+| `AIN_Job_Mapping__mdt` | 13 | `AIN_Field_Api_Name__c`, `AIN_Field_Label__c`, `AIN_Field_Type__c`, `AIN_Is_Active__c`, `AIN_Is_Required__c`, `AIN_Is_Sync__c`, `AIN_Mapped_Field__c`, `AIN_Mapped_Object__c`, `AIN_Partner_Type__c`, `AIN_Posting_URL_Api_Name__c`, `AIN_Section__c`, `AIN_Split_Delimiter__c`, `AIN_Sync_Field_Api_Name__c`, `AIN_External_Id_Api_Name__c` |
+| `AIN_Job_Board_Mapping__mdt` | 7 | `AIN_Field_Api_Name__c`, `AIN_Field_Label__c`, `AIN_Field_Type__c`, `AIN_Is_Active__c`, `AIN_Is_Required__c`, `AIN_Mapped_Field__c`, `AIN_Mapped_Object__c` |
+| `AIN_Indeed_Apply_Mapping__mdt` | 7 | `AIN_Field_Api_Name__c`, `AIN_Field_Label__c`, `AIN_Field_Type__c`, `AIN_IsMultiple__c`, `AIN_Is_Active__c`, `AIN_Is_Required__c`, `AIN_Possible_Values__c`, `AIN_Selected_Values__c` |
+| `AIN_Vms_Job_Mapping__mdt` | 7 | `AIN_Field_Api_Name__c`, `AIN_Field_Label__c`, `AIN_Field_Type__c`, `AIN_Is_Active__c`, `AIN_Is_Required__c`, `AIN_Mapped_Field__c`, `AIN_Mapped_Object__c` |
+| `AIN_Vms_Job_Board_Mapping__mdt` | 11 | Standard mapping fields plus `AIN_Candidate_Field_Api_Name__c`, `AIN_Candidate_Id_Mapped_Field_Api_Name__c`, `AIN_Candidate_Status_Field_Api_Name__c`, `AIN_Worker_Field_Api_Name__c` (candidate/worker tracking) |
+| `AIN_Default_Question_Template__mdt` | 9 | `AIN_Category__c`, `AIN_Conditional_Rules_JSON__c`, `AIN_Data_Type__c`, `AIN_Display_Order__c`, `AIN_Is_Pre_Selected__c`, `AIN_Is_Required__c`, `AIN_Options_JSON__c`, `AIN_Partner_Type__c`, `AIN_Question__c` |
+| `AIN_Disposition_Sync_Config__mdt` | 9 | `AIN_Field_Api_Name__c`, `AIN_Field_Label__c`, `AIN_Is_Active__c`, `AIN_Is_Required__c`, `AIN_Is_Status__c`, `AIN_Is_Synced__c`, `AIN_Mapped_Sf_Field__c`, `AIN_Object_API_Name__c`, `AIN_Type__c` |
+| `AIN_Disposition_Value_Map__mdt` | 5 | `AIN_Disposition_Status__c`, `AIN_Is_Active__c`, `AIN_Is_Required__c`, `AIN_Mapped_Sf_Field__c`, `AIN_Object_API_Name__c` |
+| `AIN_Webhook_Setup__mdt` | 6 | `AIN_Batch_Timing__c`, `AIN_Cleanup_Scheduler_Timing__c`, `AIN_Day_Of_Month__c`, `AIN_Day_Of_Week__c`, `AIN_RetryAll_Records_Chunk_Size__c`, `Time_Duaration_Days__c` |
+
+Field mapping records (`AIN_Mapped_Field__c`/`AIN_Object_API_Name__c` etc.) are **semicolon-delimited, position-matched lists** when a single CMDT record maps the same external field across multiple Salesforce objects — see `AIN_DispositionSyncService.buildFieldMap()` for the parsing pattern (`split(';')`, matched by index).
+
+## Corrections vs. prior documentation
+
+- **Field count is 175, not 56.** The prior figure covered only `Job__c` (5, now 20), `ATS_Applicant__c` (2, now 7), and roughly half the CMDT fields that exist today.
+- There is **no `VR_AIN_External_ID_Format` or `VR_AIN_Sync_Requirements` validation rule**, **no `WF_AIN_Clear_Sync_Status` / `WF_AIN_Enable_Indeed_Apply` workflow rule**, and **no `PB_AIN_Job_Sync_Automation` Process Builder or `Flow_AIN_Applicant_Deduplication` flow** in the current `master` metadata — these were fabricated in the prior documentation. The only Flows that exist are `AIN_Webhook_Platform_Event_Flow` and `Flow_For_Update_RedDot_Job_Source` (see `AIN_Integration_Workflows_Documentation.md`).
+- There is no field-level-security matrix tied to named permission sets (`AIN_Admin`, `AIN_Beeline_Admin`, `AIN_Guest_User`) as previously documented — those permission sets do not exist; see `AIN_Permission_Sets_Documentation.md` for the actual (programmatic) model.

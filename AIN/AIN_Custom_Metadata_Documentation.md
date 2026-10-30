@@ -2,380 +2,73 @@
 
 ## Overview
 
-The AIN package contains 184+ custom metadata records across 6 metadata types, providing a comprehensive runtime-configurable integration framework. This documentation details all configuration records and their purposes.
-
-## Metadata Record Distribution
-
-| Metadata Type | Active Records | Total Records | Purpose |
-|---|---|---|---|
-| AIN_Integration_Credentials__mdt | 3 | 3 | System authentication |
-| AIN_Job_Mapping__mdt | 61 | 61 | Indeed job mappings |
-| AIN_Job_Board_Mapping__mdt | 28 | 28 | Application mappings |
-| AIN_Indeed_Apply_Mapping__mdt | 6 | 6 | Indeed Apply config |
-| AIN_Vms_Job_Mapping__mdt | 50 | 50 | VMS job mappings |
-| AIN_Vms_Job_Board_Mapping__mdt | 42 | 42 | VMS candidate mappings |
-| **Total** | **190** | **190** | **Complete configuration** |
-
-## Detailed Metadata Records
-
-### 1. AIN_Integration_Credentials__mdt (3 records)
-
-#### Beeline
-```yaml
-MasterLabel: Beeline
-DeveloperName: Beeline
-Purpose: Beeline VMS OAuth 2.0 authentication
-Fields:
-  - AIN_Base_URL__c: https://api.beeline.com/v1
-  - AIN_Client_Id__c: [OAuth Client ID]
-  - AIN_Client_Secret__c: [Encrypted]
-  - AIN_Employer_Id__c: [Company ID in Beeline]
-  - AIN_Contact_Email__c: integration@company.com
-  - AIN_Contact_Type__c: Technical
-```
-
-#### Indeed
-```yaml
-MasterLabel: Indeed
-DeveloperName: Indeed
-Purpose: Indeed Job Board API authentication
-Fields:
-  - AIN_Base_URL__c: https://secure.indeed.com/v2
-  - AIN_Client_Id__c: [API Key]
-  - AIN_Client_Secret__c: [Encrypted API Secret]
-  - AIN_Employer_Id__c: [Indeed Employer ID]
-  - AIN_Contact_Email__c: indeed-support@company.com
-  - AIN_Contact_Type__c: Support
-```
-
-#### Indeed_Apply
-```yaml
-MasterLabel: Indeed Apply
-DeveloperName: Indeed_Apply
-Purpose: Indeed Apply webhook authentication
-Fields:
-  - AIN_Base_URL__c: https://employers.indeed.com/api
-  - AIN_Webhook_URL__c: /services/apexrest/ain/indeed/apply
-  - AIN_Client_Secret__c: [Webhook signing secret]
-  - AIN_Encryption_Key__c: [Additional encryption]
-```
-
-### 2. AIN_Job_Mapping__mdt (61 records)
-
-#### Core Job Fields
-```yaml
-# Basic Information
-- title: Job__c.Name → Required
-- description: Job__c.Description__c → Required
-- company_name: Account.Name → Required
-- job_requisition_id: Job__c.Job_ID__c → Required
-
-# Location Fields
-- location_city_region_postal: Job__c.City__c + State + Zip
-- location_country: Job__c.Country__c (default: US)
-- location_street_address: Job__c.Street_Address__c
-- location_latitude: Job__c.Latitude__c
-- location_longitude: Job__c.Longitude__c
-
-# Compensation
-- minimum_minor: Job__c.Min_Salary__c (in cents)
-- maximum_minor: Job__c.Max_Salary__c (in cents)
-- salary_currency: Job__c.Currency__c (default: USD)
-- period: Job__c.Pay_Period__c (HOURLY/SALARY)
-
-# Employment Details
-- job_type: Job__c.Employment_Type__c
-- remote_type: Job__c.Remote_Type__c
-- experience: Job__c.Experience_Required__c
-- education: Job__c.Education_Level__c
-- benefits: Job__c.Benefits__c
-
-# Scheduling
-- date_published: Job__c.Posted_Date__c
-- expiration_date: Job__c.Expiration_Date__c
-- working_hours: Job__c.Working_Hours__c
-
-# Indeed Specific
-- indeedApply: Job__c.AIN_Indeed_Apply__c
-- placement: Job__c.Placement_Type__c
-- number_of_hires: Job__c.Number_of_Openings__c
-```
-
-#### Advanced Job Mappings
-```yaml
-# Skills and Requirements
-- categories: Job__c.Job_Categories__c (multi-select)
-- occupations: Job__c.Occupation_Codes__c
-- attributes: Job__c.Required_Skills__c
-
-# Probationary Period (if applicable)
-- probationary: Job__c.Has_Probation__c
-- probationary_duration: Job__c.Probation_Duration__c
-- probationary_conditions: Job__c.Probation_Terms__c
-- probationary_minimum_minor: Job__c.Probation_Min_Salary__c
-- probationary_maximum_minor: Job__c.Probation_Max_Salary__c
-
-# Overtime Configuration
-- fixed_over_time_salary: Job__c.OT_Rate_Fixed__c
-- statutory_over_time_salary: Job__c.OT_Rate_Statutory__c
-- total_over_time_salary: Job__c.OT_Rate_Total__c
-```
-
-### 3. AIN_Job_Board_Mapping__mdt (28 records)
-
-#### Applicant Information
-```yaml
-# Personal Details
-- Applicant_First_Name: Contact.FirstName
-- Applicant_Last_Name: Contact.LastName
-- Applicant_Full_Name: Contact.Name
-- Applicant_Email: Contact.Email → Required
-- Applicant_Phone_Number: Contact.Phone
-
-# Application Data
-- Applied_On_Milliseconds: ATS_Applicant__c.Applied_Date__c
-- Applicant_Cover_Letter: ATS_Applicant__c.Cover_Letter__c
-- Applicant_Verified: ATS_Applicant__c.Email_Verified__c
-
-# Job Reference
-- Job_Id: Job__c.Id
-- Job_Key: Job__c.AIN_Source_Posting_Id__c
-- Job_Title: Job__c.Name
-- Job_Company: Job__c.Account__r.Name
-- Job_Location: Job__c.Full_Location__c
-- Job_URL: Job__c.External_URL__c
-
-# Resume JSON Parsing
-- Resume_JSON_First_Name: Parse from resume.firstName
-- Resume_JSON_Last_Name: Parse from resume.lastName
-- Resume_JSON_Email: Parse from resume.email
-- Resume_JSON_Phone_Number: Parse from resume.phone
-- Resume_JSON_Location_City: Parse from resume.location.city
-- Resume_JSON_Location_Country: Parse from resume.location.country
-- Resume_JSON_Skills: Parse from resume.skills[]
-- Resume_JSON_Summary: Parse from resume.summary
-- Resume_JSON_Headline: Parse from resume.headline
-```
-
-### 4. AIN_Indeed_Apply_Mapping__mdt (6 records)
-
-```yaml
-1. Indeed_Apply_Resume_Required
-   - Field: resume_required
-   - Type: Boolean
-   - Required: true
-   - Description: Whether resume is mandatory
-
-2. Indeed_Apply_Cover_Letter_Required
-   - Field: cover_letter_required
-   - Type: Boolean
-   - Required: false
-   - Description: Whether cover letter is required
-
-3. Indeed_Apply_Phone_Required
-   - Field: phone_required
-   - Type: Boolean
-   - Required: true
-   - Description: Phone number collection requirement
-
-4. Indeed_Apply_Name_Format
-   - Field: name_format
-   - Type: Picklist
-   - Values: ["fullName", "firstLast", "separateFields"]
-   - Selected: "firstLast"
-
-5. Indeed_Apply_Resume_Fields_Required
-   - Field: required_fields
-   - Type: MultiSelect
-   - Possible Values: ["education", "experience", "skills"]
-   - Selected: ["experience", "skills"]
-
-6. Indeed_Apply_Resume_Fields_Optional
-   - Field: optional_fields
-   - Type: MultiSelect
-   - Possible Values: ["certifications", "languages", "references"]
-   - Selected: ["certifications", "languages"]
-```
-
-### 5. AIN_Vms_Job_Mapping__mdt (50 records)
-
-#### VMS Job Requirements
-```yaml
-# Job Identification
-- Job_Id: Job__c.Id
-- Enterprise_Job_Posting_Number: Job__c.VMS_Job_Number__c
-- title: Job__c.Name
-- description: Job__c.Full_Description__c
-
-# Client Information
-- Client_Name: Job__c.Account__r.Name
-- Client_Unique_Id: Job__c.Account__r.VMS_Client_ID__c
-- Enterprise_Name: Job__c.Account__r.Parent.Name
-
-# Classification
-- Classification_Name: Job__c.Job_Classification__c
-- Industry_Name: Job__c.Industry__c
-- Request_Type: Job__c.Request_Type__c
-
-# Location Details
-- Physical_Work_Location_Street1: Job__c.Street_Address_1__c
-- Physical_Work_Location_Street2: Job__c.Street_Address_2__c
-- Physical_Work_Location_City: Job__c.City__c
-- Physical_Work_Location_State: Job__c.State_Province__c
-- Physical_Work_Location_Postal_Code: Job__c.Postal_Code__c
-- Physical_Work_Location_Country_Code: Job__c.Country_Code__c
-
-# Cost Centers
-- Admin_Cost_Center_Number: Job__c.Admin_Cost_Center__c
-- Bill_To_Cost_Center_Number: Job__c.Billing_Cost_Center__c
-
-# Dates and Duration
-- Start_Date: Job__c.Start_Date__c
-- endDate: Job__c.End_Date__c
-- Expiry_Date: Job__c.Expiration_Date__c
-
-# Supplier Management
-- Supplier_Name: Job__c.Preferred_Supplier__c
-- Supplier_Uid: Job__c.Supplier_ID__c
-- Supplier_Enterprise_Connections: Job__c.Supplier_Networks__c
-```
-
-### 6. AIN_Vms_Job_Board_Mapping__mdt (42 records)
-
-#### Candidate Submission Fields
-```yaml
-# Personal Information
-- First_Name: Contact.FirstName → Required
-- Last_Name: Contact.LastName → Required
-- Middle_Name: Contact.MiddleName
-- Date_Of_Birth: Contact.Birthdate
-- gender: Contact.Gender__c
-
-# Identification
-- Candidate_Id: ATS_Applicant__c.AIN_BE_Candidate_Id__c
-- Worker_Id: ATS_Applicant__c.AIN_BE_Worker_Id__c
-- Partial_National_Id: Contact.SSN_Last_Four__c
-- fullNationalId: [Encrypted field]
-
-# Contact Information
-- email: Contact.Email → Required
-- Phone: Contact.Phone → Required
-- Phone_Type: Contact.Phone_Type__c
-
-# Address
-- Address_Line: Contact.MailingStreet
-- Address_City: Contact.MailingCity
-- Address_State: Contact.MailingState
-- Address_PostCode: Contact.MailingPostalCode
-- Address_Country: Contact.MailingCountry
-
-# Rates and Compensation
-- Bill_Rates_Amount: ATS_Applicant__c.Bill_Rate__c
-- Pay_Rates_Amount: ATS_Applicant__c.Pay_Rate__c
-- Rate_Currency: ATS_Applicant__c.Currency__c
-- Rate_Period: ATS_Applicant__c.Rate_Period__c
-
-# Availability
-- Date_Available: ATS_Applicant__c.Available_Date__c
-- ResourceType: ATS_Applicant__c.Resource_Type__c
-
-# History
-- Former_Employee: Contact.Former_Employee__c
-- Former_Consultant: Contact.Former_Consultant__c
-
-# Submission Details
-- Job_Posting_Id: Job__c.AIN_Source_Posting_Id__c
-- Enterprise_Job_Posting_Number: Job__c.VMS_Job_Number__c
-- Supplier_Submittal_Comments: ATS_Applicant__c.Submission_Notes__c
-```
-
-## Configuration Patterns
-
-### Field Type Distribution
-```yaml
-Text Fields: 45%
-Boolean Fields: 15%
-Number Fields: 20%
-Date Fields: 10%
-Picklist Fields: 10%
-```
-
-### Required Field Analysis
-```yaml
-Job Publishing:
-  - Required Fields: 12
-  - Optional Fields: 49
-  - Conditional Fields: 5
-
-Candidate Submission:
-  - Required Fields: 8
-  - Optional Fields: 34
-  - System Fields: 4
-```
-
-## Metadata Management
-
-### Activation Control
-- All mappings have `AIN_Is_Active__c` field
-- Allows runtime enable/disable without deletion
-- Supports A/B testing of mappings
-
-### Sync Configuration
-- `AIN_Is_Sync__c` controls bidirectional sync
-- Available on VMS mappings only
-- Prevents sync loops
-
-### Field Grouping
-- `AIN_Section__c` groups related fields
-- Used for UI organization
-- Improves configuration management
-
-## Best Practices
-
-### 1. Naming Conventions
-```yaml
-Pattern: {System}_{Entity}_{Field}
-Examples:
-  - Indeed_Job_Title
-  - Beeline_Candidate_FirstName
-  - Apply_Resume_Required
-```
-
-### 2. Field Mapping Strategy
-- Map to most specific field available
-- Use formula fields for complex transformations
-- Document any data type conversions
-
-### 3. Performance Optimization
-- Only activate necessary mappings
-- Index frequently queried metadata
-- Cache metadata in memory
-
-### 4. Version Control
-- Export metadata regularly
-- Track changes in source control
-- Document configuration changes
-
-## Troubleshooting Guide
-
-### Common Issues
-
-1. **Missing Required Fields**
-   - Check `AIN_Is_Required__c` = true mappings
-   - Verify source field has data
-   - Check field-level security
-
-2. **Data Type Mismatches**
-   - Review `AIN_Field_Type__c` settings
-   - Implement type conversion in code
-   - Use formula fields for transformations
-
-3. **Inactive Mappings**
-   - Verify `AIN_Is_Active__c` = true
-   - Check for duplicate mappings
-   - Review section groupings
-
-4. **Sync Issues**
-   - Check `AIN_Is_Sync__c` settings
-   - Verify bidirectional mappings exist
-   - Monitor for sync loops
+The AIN package ships **240 custom metadata records** (verified by counting `.md-meta.xml` files under `force-app/main/default/customMetadata/` on `master`, matching the `CustomMetadata` member count in `manifest/package.xml`) across **10 custom metadata types**. This is up from 6 types / ~184-190 records previously documented — 4 new CMDT types were added (`AIN_Disposition_Sync_Config__mdt`, `AIN_Disposition_Value_Map__mdt`, `AIN_Default_Question_Template__mdt`, `AIN_Webhook_Setup__mdt`), and `AIN_Integration_Credentials__mdt` gained a 4th record (`RedDot`).
+
+## Metadata Record Distribution (verified counts)
+
+| Metadata Type | Record Count | Purpose |
+|---|---|---|
+| `AIN_Job_Mapping__mdt` | 67 | Salesforce `Job__c` ⇄ Indeed GraphQL job field mapping |
+| `AIN_Vms_Job_Mapping__mdt` | 50 | `Job__c` ⇄ Beeline job field mapping |
+| `AIN_Vms_Job_Board_Mapping__mdt` | 35 | Candidate submission fields ⇄ Beeline |
+| `AIN_Job_Board_Mapping__mdt` | 32 | Inbound application fields ⇄ Salesforce (Indeed Apply / generic job board) |
+| `AIN_Disposition_Value_Map__mdt` | 24 | SF picklist value ⇄ Indeed disposition status (e.g. `HIRED`, `WITHDRAWN`, `REVIEW`, `SCREEN`) |
+| `AIN_Disposition_Sync_Config__mdt` | 13 | Field-level config for the Indeed `partnerDispositionSync` payload |
+| `AIN_Indeed_Apply_Mapping__mdt` | 6 | Indeed Apply form configuration (resume/cover letter/phone requirements, name format) |
+| `AIN_Default_Question_Template__mdt` | 6 | Seed data for the screening/demographic question library |
+| `AIN_Integration_Credentials__mdt` | 4 | Beeline, Indeed, Indeed_Apply, **RedDot** credentials |
+| `AIN_Webhook_Setup__mdt` | 1 | Webhook retry/cleanup batch scheduling configuration |
+| **Total** | **240** | |
+
+## 1. `AIN_Integration_Credentials__mdt` (4 records)
+
+| Record | Purpose |
+|---|---|
+| `Beeline` | OAuth 2.0 client-credentials for Beeline VMS |
+| `Indeed` | Server-to-server GraphQL API credentials |
+| `Indeed_Apply` | Indeed Apply webhook configuration |
+| `RedDot` | RedDot job board credentials (fields present but nil by default — populated per-org via the `ainRedDotAuthenticationSettings` LWC) |
+
+Fields (13): `AIN_Base_URL__c`, `AIN_Client_Id__c`, `AIN_Client_Secret__c`, `AIN_Contact_Email__c`, `AIN_Contact_Type__c`, `AIN_Employer_Id__c`, `AIN_Encryption_Key__c`, `AIN_Indeed_Apply_Id__c`, `AIN_Is_Active__c`, `AIN_Is_Simulated__c`, `AIN_Is_Testing__c`, `AIN_Source_Name__c`, `AIN_Source_Type__c`, `AIN_Webhook_URL__c`.
+
+## 2. `AIN_Job_Mapping__mdt` (67 records)
+
+Maps `Job__c` fields to Indeed GraphQL job-posting input fields (`title`, `description`, `company_name`, `location_city_region_postal`, `minimum_minor`/`maximum_minor`, `job_type`, `remote_type`, `date_published`, `expiration_date`, probationary-period fields, overtime salary fields, RedDot-specific fields `Email_RedDot`/`ExternalUrl_RedDot`/`Location_RedDot`/`Title_RedDot`, and more). Supports semicolon-delimited multi-object mapping via `AIN_Mapped_Object__c`/`AIN_Mapped_Field__c` for records shared across Indeed and RedDot.
+
+## 3. `AIN_Job_Board_Mapping__mdt` (32 records)
+
+Maps inbound application data (from Indeed Apply/job boards) to `Contact`/`ATS_Applicant__c`/`Job_Board_Application__c` fields — applicant name/email/phone, resume JSON sub-fields (`Resume_JSON_First_Name`, `Resume_JSON_Skills`, `Resume_JSON_Summary`, etc.), job reference fields, and now also `Demographic_Question_And_Answer` / `Screener_Question_And_Answer` / `Webhook_Apply_Id` (new since prior documentation, supporting the question/answer capture pipeline).
+
+## 4. `AIN_Indeed_Apply_Mapping__mdt` (6 records)
+
+`Indeed_Apply_Resume_Required`, `Indeed_Apply_Cover_Letter_Required`, `Indeed_Apply_Phone_Required`, `Indeed_Apply_Name_Format`, `Indeed_Apply_Resume_Fields_Required`, `Indeed_Apply_Resume_Fields_Optional`.
+
+## 5. `AIN_Vms_Job_Mapping__mdt` (50 records)
+
+Maps `Job__c` fields to Beeline job-posting fields: client/enterprise identification, classification, physical and tax work-location detail, cost centers, start/end/expiry dates, supplier connections, job attachment ids.
+
+## 6. `AIN_Vms_Job_Board_Mapping__mdt` (35 records)
+
+Maps candidate submission data to Beeline: personal info, address components, rates, availability, former-employee/consultant flags, plus candidate/worker tracking fields (`AIN_Candidate_Id_Mapped_Field_Api_Name__c`, `AIN_Candidate_Status_Field_Api_Name__c`, `AIN_Worker_Field_Api_Name__c`, `AIN_Candidate_Field_Api_Name__c`) used to write back candidate status/worker IDs from Beeline webhook responses.
+
+## 7. `AIN_Disposition_Sync_Config__mdt` (13 records) — **new since prior documentation**
+
+Defines, per Indeed `partnerDispositionSync` GraphQL field, which Salesforce object(s) and field(s) supply the value (`AIN_Object_API_Name__c`, `AIN_Mapped_Sf_Field__c`, both semicolon-delimited and position-matched for multi-object configs), whether the field represents the disposition status itself (`AIN_Is_Status__c`), whether it's required (`AIN_Is_Required__c`), and which SF field tracks sync completion/failure reason (`AIN_Is_Synced__c`, `AIN_Failure_Reason__c`). Sample mapped Indeed fields: `atsApplicationIdentifier`, `atsName`, `dispositionStatus`, `emailAddress`, `employerJobId`, `identifiedBy`, `indeedApplyID`, `indeedJobKey`, `indeedJobSeekerKey`, `ittk`, `rawDispositionDetails`, `rawDispositionStatus`, `statusChangeDateTime`, `universalApplyId`.
+
+## 8. `AIN_Disposition_Value_Map__mdt` (24 records) — **new since prior documentation**
+
+Maps Salesforce picklist values to Indeed disposition statuses. Record names observed: `ASSESS_QUALIFICATIONS`, `BACKGROUND_CHECK`, `CONTACTED`, `DROPPED_DUPLICATE`, `DROPPED_FRAUD_SPAM`, `DROPPED_JOB_EXPIRED`, `DROPPED_OTHER`, `HIRED`, `INCOMPLETE`, `INTERVIEW`, `JOB_CLOSED`, `JOB_INACTIVE`, `LIKED`, `NEW`, `NOT_SELECTED`, `OFFER_DECLINED`, `OFFER_MADE`, `ONBOARDED`, `POSITIVELY_SCREENED`, `REVIEW`, `SCREEN`, `UNABLE_TO_MAP`, `VERIFY_ELIGIBILITY`, `WITHDRAWN`. The `AIN_Mapped_Sf_Field__c` value is stored as a JSON object keyed by `object:field`, listing the SF values that map to that Indeed status (see `AIN_DispositionSyncService.buildValueLookup()`).
+
+## 9. `AIN_Default_Question_Template__mdt` (6 records) — **new since prior documentation**
+
+Seed templates for the screening/demographic question library, cloned into `AIN_Candidate_Question__c` on install (`AIN_PostInstallScript.cloneDefaultQuestionTemplates()`). Record names observed: `disability`, `experience`, `military_veteran`, `region`, `relocation`, `salary_expectations`.
+
+## 10. `AIN_Webhook_Setup__mdt` (1 record) — **new since prior documentation**
+
+Single record (`AIN_Webhook_Setup`) configuring the webhook retry/cleanup batch schedule: `AIN_Batch_Timing__c`, `AIN_Cleanup_Scheduler_Timing__c`, `AIN_Day_Of_Month__c`, `AIN_Day_Of_Week__c`, `AIN_RetryAll_Records_Chunk_Size__c` (verified value: `10`), `Time_Duaration_Days__c` (verified value: `30` — retention window for webhook log cleanup).
+
+## Corrections vs. prior documentation
+
+- **6 metadata types / ~184-190 records is stale.** The package now has **10 types / 240 records** — a 30%+ increase driven entirely by capabilities that didn't exist before (disposition sync, screening questions, webhook scheduling) plus the RedDot credential record.
+- `AIN_Integration_Credentials__mdt` has **4** records, not 3 — RedDot was previously omitted entirely.
+- Field mapping values can be **semicolon-delimited multi-object lists** (e.g., one `AIN_Job_Mapping__mdt` record mapping to both Indeed and RedDot via position-matched `AIN_Mapped_Object__c`/`AIN_Mapped_Field__c` lists) — this pattern did not exist in, and is not described by, prior documentation, which assumed one-to-one record-to-mapping relationships.
