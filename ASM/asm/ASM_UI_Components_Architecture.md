@@ -1,23 +1,36 @@
 # ASM UI Components Architecture Documentation
 
-## Overview
-This document provides comprehensive documentation for the 19 UI components that were identified as missing from the initial ASM package analysis. These components are critical for user interaction and define the complete user experience within the ASM (Asymbl Search & Match) system.
+> **Repo**: `ASM/asm` on disk · **Branch read**: `master` (HEAD `31f9b46` @ 2026-08-09) ·
+> **Depends on**: ASYMBL-ATS only. Scoped entirely to `ASM/asm` — does not cover
+> `asymbl-intelligence` or `AINTL-Unmanaged` UI surfaces.
+>
+> **Corrected 2026-10-30**: counts below updated from the original (July 2025) "19 components"
+> figure to 23, and `Account.Parse_Resume` (previously undocumented) added as a second Quick Action.
 
-## Missing UI Components Summary
+## Overview
+This document provides comprehensive documentation for the UI components (beyond Apex/LWC) in the
+ASM (Asymbl Search & Match) package — Quick Actions, Custom Tabs, Page Layouts, Compact Layouts,
+List Views, and Static Resources. These components are critical for user interaction and define the
+complete user experience within the ASM system.
+
+## UI Components Summary (corrected)
 
 | Component Type | Count | Components |
 |---------------|-------|------------|
-| **QuickAction** | 1 | Contact.Parse_Resume |
-| **CustomTab** | 6 | ASM_Admin_Tab, Asymbl_Search, Resume_Parser, etc. |
-| **Layout** | 8 | Page layouts for all objects |
-| **CompactLayout** | 2 | Employment_History, ASM_Skill |
-| **ListView** | 1 | ASM_Education_History.All |
-| **StaticResource** | 1 | ASM_Resources |
-| **TOTAL** | **19** | Critical UI components |
+| **QuickAction** | 2 | Contact.Parse_Resume, Account.Parse_Resume (second one previously undocumented) |
+| **CustomTab** | 6 | ASM_Admin_Tab, Asymbl_Search, Resume_Parser, Employment_History__c, ASM_Skill__c, ASM_Education_History__c |
+| **Layout** | 8 | Page layouts for all objects and `__mdt` types |
+| **CompactLayout** | 2 | Employment_History__c, ASM_Skill__c |
+| **ListView** | 1 | ASM_Education_History__c.All |
+| **StaticResource** | 3 | ASM_Resources, ASM_ModalContainer, Contact_Field_Set (previously only ASM_Resources was documented) |
+| **TOTAL** | **23** | Non-Apex, non-LWC UI components (AuraDefinitionBundle counted separately — see Package Documentation) |
 
-## 1. Quick Actions (1 Component)
+## 1. Quick Actions (2 Components — corrected from 1)
 
 ### Contact.Parse_Resume (CRITICAL COMPONENT)
+
+A second, equivalent Quick Action — **Account.Parse_Resume** — exists on the Account object (used
+for Person Account orgs) and was absent from the original documentation. Same workflow applies.
 
 **Purpose**: Primary entry point for resume parsing functionality directly from Contact records.
 
@@ -270,7 +283,12 @@ graph LR
 - **Filter Criteria**: All records where Contact__c != null
 - **Sort Order**: Contact Name (ascending), School Name (ascending)
 
-## 6. Static Resources (1 Component)
+## 6. Static Resources (3 Components — corrected from 1)
+
+In addition to `ASM_Resources` (documented below), two more static resources exist on `master`:
+**`ASM_ModalContainer`** and **`Contact_Field_Set`** (contains `ASM_Candidate_Overview_Field_Set.xml`
+and `ASM_Candidate_Profile_Field_Set.xml` — exported field-set definitions used to drive the
+candidate overview/profile UI).
 
 ### ASM_Resources
 

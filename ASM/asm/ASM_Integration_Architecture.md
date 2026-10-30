@@ -1,9 +1,25 @@
 # ASM Integration Architecture Documentation
 ## Daxtra and RChilli Resume Parsing Integration
 
-### Version: 1.0
-### Date: July 5, 2025
-### Classification: ASM_5 - Integration Architecture
+> **Repo**: `ASM/asm` on disk · **Branch read**: `master` (HEAD `31f9b46` @ 2026-08-09) ·
+> **Depends on**: ASYMBL-ATS only. This document describes the `asm` repo's own integration layer
+> (Daxtra/RChilli resume parsing) — it does not cover `asymbl-intelligence` or `AINTL-Unmanaged`,
+> which are separate repos with their own (much thinner, newer) integration surfaces documented in
+> `../asymbl-intelligence/` and `../AINTL-Unmanaged/` respectively.
+>
+> **Content note (2026-10-30 refresh)**: the original document's narrative and Apex code patterns
+> (orchestration service, retry/fallback logic, batch processing, security practices) remain an
+> accurate *illustration* of how this package's services are structured and were preserved as-is.
+> However, verify exact class/method signatures against current `force-app` source before relying
+> on them for implementation — this file was not re-verified line-by-line against the `master`
+> source in this pass, only its top-level framing and repo attribution were corrected. Confirmed
+> accurate: `ASM_DaxtraService`, `ASM_RChilliService`, `ASM_ResumeParserService`,
+> `ASM_MetadataService`, `ASM_RemoteSiteSettingService`, `ASM_ResumeParserBatch`,
+> `ASM_MultipleResumeParserBatch`, and all five `__mdt` configuration types still exist in
+> `force-app/main/default/classes` and `objects` on `master` as of 2026-08-09.
+
+### Version: 1.1 (refreshed 2026-10-30; originally authored July 5, 2025)
+### Classification: ASM Integration Architecture — repo `ASM/asm`
 
 ---
 

@@ -1,5 +1,18 @@
 # ASM Package ERD Index
 
+> **Repo**: `ASM/asm` on disk · **Branch read**: `master` (HEAD `31f9b46` @ 2026-08-09) ·
+> **Depends on**: ASYMBL-ATS only. Scoped to `ASM/asm` only — `asymbl-intelligence` and
+> `AINTL-Unmanaged` have their own (much smaller) object models documented in their own subfolders.
+>
+> **Note (2026-10-30)**: the individual `ERD_*.md` files referenced below (e.g.
+> `ERD_Resume_Parsing.md`, `ERD_Skills_Management.md`) were **not found in this documentation
+> repository** at the time of this refresh — only this index file and the three companion documents
+> (`ASM_Package_Documentation.md`, `ASM_Integration_Architecture.md`,
+> `ASM_UI_Components_Architecture.md`) exist on disk. Treat the individual ERD file links below as a
+> **planned/aspirational index**, not confirmed-existing files, until verified. The object inventory
+> itself (now including the previously-missing `Search_History__c`) is accurate as of `master`
+> 2026-08-09 — see `ASM_Package_Documentation.md` for the corrected, verified object/field list.
+
 ## Entity Relationship Diagram Index for ASM (Asymbl Search and Match) Package
 
 This index provides a comprehensive overview of all Entity Relationship Diagrams (ERDs) available for the ASM package, organized by functional area and complexity.

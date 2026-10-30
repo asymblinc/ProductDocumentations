@@ -1,42 +1,87 @@
 # ASM (Asymbl Search & Match) Package Documentation
 
-## Overview
-The ASM (Asymbl Search & Match) package is a comprehensive Salesforce solution for advanced resume parsing, candidate search, and talent matching capabilities. This package integrates multiple resume parsing services (Daxtra and RChilli) and provides sophisticated search and matching algorithms for recruitment and talent management.
+> **Repo**: `ASM/asm` on disk · **Branch read**: `master` (HEAD `31f9b46` @ 2026-08-09) ·
+> **Depends on**: ASYMBL-ATS (`bpats` core) only — verified from `sfdx-project.json`
+> (`"package": "Asymbl Search & Match"`, v0.167.0, dependency on `ASYMBL-ATS` 1.149.0.LATEST).
+> **Last refreshed**: 2026-10-30 (previous version of this file was last updated July 2025 and its
+> counts were stale by roughly 13 months of development — see corrected statistics below).
 
-## Package Statistics
-- **Total Components**: 693 (corrected from initial estimate)
-- **Apex Classes**: 72
-- **Triggers**: 3
-- **Custom Objects**: 8 (3 custom + 5 metadata types)
-- **Lightning Web Components**: 32
-- **Custom Labels**: 235
-- **Custom Fields**: 85
-- **Custom Metadata Records**: 240
-- **UI Components**: 19 (CustomTab, Layout, CompactLayout, ListView, QuickAction, StaticResource)
+## Overview
+The ASM (Asymbl Search & Match) package is a comprehensive Salesforce solution for advanced resume parsing, candidate search, and talent matching capabilities. This package integrates multiple resume parsing services (Daxtra and RChilli) and provides sophisticated search and matching algorithms for recruitment and talent management. It is an **add-on package to ASYMBL-ATS** (per its own `versionDescription`: "Add on package for Asymbl Search and Match Capabilities") — it does not function standalone.
+
+## Package Statistics (verified against `manifest/package.xml` on `master`, ULTRATHINK cross-checked against `force-app`)
+
+- **Total declared components (package.xml members)**: 864
+- **Apex Classes**: 103 declared members (~53 unique class names × prod+test; 106 `.cls` files on disk)
+- **Triggers**: 5 (`ASM_ContactTrigger`, `ASM_ContentVersionTrigger`, `ASM_JobTrigger`, `ASM_JBATrigger`, `ASM_PersonAccountTrigger`)
+- **Custom Objects**: 9 (4 business objects + 5 `__mdt` configuration types) — see note below
+- **Lightning Web Components**: 51 declared in package.xml; 53 present on disk (see drift note)
+- **Custom Labels**: 337 declared in package.xml; 372 present in `CustomLabels.labels-meta.xml` on disk (see drift note)
+- **Custom Fields**: 100
+- **Custom Metadata Records**: 242
+- **UI Components**: CustomTab (6), Layout (8), CompactLayout (2), ListView (1), QuickAction (2), StaticResource (3)
+- **AuraDefinitionBundle**: 1 (legacy `asmMatchingApplicantContainer`)
+
+### ⚠ package.xml vs. force-app drift (ULTRATHINK gap analysis finding)
+
+`manifest/package.xml` on `master` is **not perfectly in sync** with the actual `force-app` source on
+the same branch/commit. This is a real, as-found discrepancy — not a documentation error — and is
+called out here rather than silently reconciled:
+
+| Area | In `force-app` but NOT in `package.xml` | In `package.xml` but NOT in `force-app` |
+|---|---|---|
+| Apex Classes | `ASM_CustomSearchServiceTest`, `ASM_DeleteJobBatch`, `ASM_DeleteJobBatchTest`, `ASM_VacancyCandidateMatchingController` | `ASM_DaxtraMappingController(Test)`, `ASM_DaxtraService(Test)`, `ASM_DeleteCandidateBatch`, `ASM_SyncingController(Test)` |
+| LWC | `asmCustomSuggestions`, `asmJobMappingContainer`, `asmRelatedListSetup`, `asmSearchHistoryComponent` | `asmCustomSearchHistoryComponent`, `asmRelatedListsSetup` |
+| Custom Labels | 372 on disk vs. 337 declared (35 undeclared labels) | — |
+
+The LWC/Apex mismatches look like **renames that were applied on disk but never reflected back into
+`manifest/package.xml`** (e.g. `asmRelatedListsSetup` → `asmRelatedListSetup`,
+`ASM_DaxtraService`/`ASM_DaxtraMappingController` apparently superseded by newer class names not
+yet added to the manifest). Anyone regenerating this manifest for a deploy/retrieve should
+reconcile both directions before trusting it as a complete source of truth.
+
+### Custom Objects detail (9 total — corrected from the prior "8")
+
+Business data objects (4, not 3 as previously documented — **`Search_History__c` was missing from
+the original inventory**):
+- **ASM_Education_History__c** — educational background tracking
+- **Employment_History__c** — professional experience tracking
+- **ASM_Skill__c** — skills and competencies management
+- **Search_History__c** — recent/saved search tracking (fields: `Searched_Text__c`, `Search_Text_Source__c`, `Removed_By_User__c`) — new since the original July 2025 documentation
+
+Custom Metadata Types (5, unchanged):
+- **ASM_Candidate_Mapping__mdt**, **ASM_Job_Mapping__mdt**, **ASM_Generic_Setting__mdt**,
+  **ASM_Daxtra_Credentials__mdt**, **ASM_Resume_Mapping__mdt**
+
+Standard-object extensions confirming the ATS dependency (fields added to ATS-owned objects, cross
+package namespace `bpats__`):
+- `Contact` — `Is_Synced__c`, `Sync_This_Record__c`, `Total_Years_Of_Work_Experience__c`
+- `bpats__Job__c` — `Is_Synced__c`, `Sync_This_Record__c`
+- `bpats__Job_Board_Application__c` — `Is_Synced__c`, `Sync_This_Record__c`
 
 ## Component Statistics Summary
 
-| Component Type | Count | Purpose |
+| Component Type | Count (package.xml) | Purpose |
 |---------------|-------|---------|
-| **ApexClass** | 72 | Business logic, controllers, services, utilities |
-| **ApexTrigger** | 3 | Record lifecycle management |
+| **ApexClass** | 103 | Business logic, controllers, services, utilities |
+| **ApexTrigger** | 5 | Record lifecycle management |
 | **AuraDefinitionBundle** | 1 | Legacy Aura component |
-| **CustomLabel** | 235 | UI text and messaging |
-| **CustomObject** | 8 | Data model (3 business + 5 metadata types) |
-| **CustomField** | 85 | Object field extensions |
-| **CustomMetadata** | 240 | Configuration records |
+| **CustomLabel** | 337 | UI text and messaging |
+| **CustomObject** | 9 | Data model (4 business + 5 metadata types) |
+| **CustomField** | 100 | Object field extensions (incl. extensions on ATS's `bpats__Job__c` / `bpats__Job_Board_Application__c`) |
+| **CustomMetadata** | 242 | Configuration records |
 | **CustomTab** | 6 | Navigation tabs |
 | **Layout** | 8 | Page layouts |
 | **CompactLayout** | 2 | Compact view layouts |
 | **ListView** | 1 | List view configuration |
-| **QuickAction** | 1 | Parse Resume quick action |
-| **StaticResource** | 1 | Static assets |
-| **LightningComponentBundle** | 32 | Modern Lightning components |
-| **TOTAL** | **693** | Complete package components |
+| **QuickAction** | 2 | Parse Resume quick actions (Account **and** Contact — previously only Contact was documented) |
+| **StaticResource** | 3 | Static assets (`ASM_Resources`, `ASM_ModalContainer`, `Contact_Field_Set`) |
+| **LightningComponentBundle** | 51 | Modern Lightning components (53 exist on disk — see drift note) |
+| **TOTAL** | **864** | Complete package.xml component count |
 
 ## Core Components
 
-### 1. Apex Classes (72 Total)
+### 1. Apex Classes (~53 unique classes, 103 package.xml members incl. tests)
 
 #### Resume Parsing Services
 - **ASM_DaxtraService** - Core service for Daxtra resume parsing integration
@@ -77,10 +122,11 @@ The ASM (Asymbl Search & Match) package is a comprehensive Salesforce solution f
 - **ASM_TriggerHandler** - Base trigger handler framework
 - **ASM_TriggerHandlerTest** - Test coverage for trigger framework
 
-### 2. UI Components (19 Total - Previously Missing)
+### 2. UI Components (23 Total — corrected count: 6 CustomTab + 8 Layout + 2 CompactLayout + 1 ListView + 2 QuickAction + 3 StaticResource + 1 AuraDefinitionBundle)
 
-#### Quick Actions (1)
+#### Quick Actions (2 — not 1; `Account.Parse_Resume` was previously undocumented)
 - **Contact.Parse_Resume** - Critical UI component for resume parsing directly from Contact records
+- **Account.Parse_Resume** - Equivalent resume parsing quick action surfaced on Account/Person Account records
 
 #### Custom Tabs (6)
 - **ASM_Admin_Tab** - Administrative interface
@@ -106,15 +152,17 @@ The ASM (Asymbl Search & Match) package is a comprehensive Salesforce solution f
 #### Static Resources (1)
 - **ASM_Resources** - Contains images, CSS, JavaScript, and other UI assets
 
-### 3. Custom Objects (8 Total)
+### 3. Custom Objects (9 Total — corrected from 8; `Search_History__c` was missing from the original inventory)
 
-#### Custom Data Objects (3)
+#### Custom Data Objects (4)
 - **ASM_Education_History__c** - Educational background tracking
   - Fields: Contact__c, Degree_Name__c, Degree_Type__c, Major__c, School_Name__c, School_Type__c
 - **Employment_History__c** - Professional experience tracking
-  - Fields: Contact__c, Description__c, Employer_Org_Name__c, End_Date__c, Job_Grade__c, Months_Of_Work__c, Position_Type__c, Start_Date__c, Title__c
+  - Fields: Contact__c, Description__c, Employer_Org_Name__c, Employer_Org_Type__c, End_Date__c, Job_Grade__c, Months_Of_Work__c, Org_Name__c, Position_Type__c, Start_Date__c, Title__c
 - **ASM_Skill__c** - Skills and competencies management
-  - Fields: Contact__c, Job__c, Skill_Name__c, Skill_Level__c, Skill_Proficiency__c, Type__c, Value__c
+  - Fields: Auth__c, Contact__c, Description__c, Job__c, Last_Used__c, Skill_Alias_Array__c, Skill_Count__c, Skill_Level__c, Skill_Name__c, Skill_Proficiency__c, Skill_Type__c, Type__c, Value__c
+- **Search_History__c** - Recent/saved candidate search tracking (new since original docs)
+  - Fields: Searched_Text__c, Search_Text_Source__c, Removed_By_User__c
 
 #### Custom Metadata Types (5)
 - **ASM_Candidate_Mapping__mdt** - Candidate field mapping configuration
@@ -123,7 +171,7 @@ The ASM (Asymbl Search & Match) package is a comprehensive Salesforce solution f
 - **ASM_Daxtra_Credentials__mdt** - Daxtra service credentials
 - **ASM_Resume_Mapping__mdt** - Resume parsing field mappings
 
-### 4. Lightning Web Components (32 Total)
+### 4. Lightning Web Components (51 declared in package.xml / 53 present on disk — up from 32 previously documented)
 
 #### Admin and Configuration Components (11)
 - **asmDaxtraAdminSetup** - Daxtra service configuration interface
@@ -217,7 +265,7 @@ The ASM (Asymbl Search & Match) package is a comprehensive Salesforce solution f
 - **Real-time Results**: Instant candidate identification
 
 ### Modern User Experience
-- **32 Lightning Web Components** for responsive interfaces
+- **51+ Lightning Web Components** for responsive interfaces (up from 32 in prior docs)
 - **Parse_Resume Quick Action** for streamlined workflow
 - **6 Custom Tabs** for organized navigation
 - **Mobile-Optimized** layouts and compact views
@@ -243,12 +291,12 @@ The ASM (Asymbl Search & Match) package is a comprehensive Salesforce solution f
 - **Future-Proof**: Modern Lightning Experience built
 
 ## Version Information
-- **API Version**: 60.0
-- **Package Type**: Unmanaged
-- **Total Components**: 693
-- **Test Coverage**: 72 test classes for comprehensive validation
+- **API Version**: 63.0 (`sourceApiVersion` in `sfdx-project.json`; package.xml manifest itself pins `60.0`)
+- **Package Type**: Managed (2GP) — package `Asymbl Search & Match`, v0.167.0, add-on to ASYMBL-ATS. (The prior "Unmanaged" classification in this doc was incorrect — confirmed via `sfdx-project.json`'s `dependencies` block and the Salesforce 2GP packaging conventions used across the whole ASM product group.)
+- **Total Components (package.xml)**: 864
+- **Test Coverage**: ~44 test classes (of ~103 ApexClass package.xml members, roughly half are `*Test` classes)
 
 ## Conclusion
-The ASM package represents a comprehensive solution for advanced talent management and recruitment operations within the Salesforce ecosystem. With corrected component counts showing 693 total components including critical UI elements, the package provides organizations with powerful tools for talent acquisition and candidate management.
+The ASM package represents a comprehensive solution for advanced talent management and recruitment operations within the Salesforce ecosystem, and functions as a managed-package add-on to ASYMBL-ATS (not standalone). As of the `master` branch snapshot dated 2026-08-09, the package contains 864 declared components, up substantially from the 693 recorded in the July 2025 documentation — reflecting roughly thirteen months of continued development, including a new `Search_History__c` object, 19 additional Lightning Web Components, and a second Parse Resume quick action on Account.
 
 The package's modular architecture, comprehensive test coverage, and extensive customization options make it suitable for organizations of various sizes and complexity levels, while its integration capabilities ensure seamless operation within existing Salesforce environments.

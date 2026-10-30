@@ -1,231 +1,99 @@
-# ASM Package Documentation
+# ASM Group Documentation
 
-Welcome to the comprehensive documentation for the **ASM (Asymbl Search and Match) Package** - a powerful Salesforce-based solution for resume parsing, candidate search, and skills management.
+> **Restructured 2026-10-30.** This folder was previously a single flat directory describing only
+> one of three repos. It is now split into three subfolders — one per actual GitHub repository —
+> reflecting the real, strictly layered dependency chain. See "Why this was restructured" below.
 
-## 📋 Table of Contents
+## The three repos
 
-- [Overview](#overview)
-- [Package Statistics](#package-statistics)
-- [Entity Relationship Diagrams](#entity-relationship-diagrams)
-- [Core Documentation](#core-documentation)
-- [Object Categories](#object-categories)
-- [Integration Architecture](#integration-architecture)
-- [Getting Started](#getting-started)
-- [Quick Navigation](#quick-navigation)
+The "ASM" product group spans **three separate Salesforce repositories**, all shipping under
+namespace `bpats`, all read here on branch **`master`**:
 
-## 🎯 Overview
+| Folder | Repo (disk path) | Package name | Depends on |
+|---|---|---|---|
+| [`asm/`](asm/) | `ASM/asm` | **Asymbl Search & Match** | ASYMBL-ATS (`bpats` core) only |
+| [`asymbl-intelligence/`](asymbl-intelligence/) | `ASM/asymbl-intelligence` | **Asymbl Intelligence (AINTL)** | ASYMBL-ATS **and** Asymbl Search & Match |
+| [`AINTL-Unmanaged/`](AINTL-Unmanaged/) | `ASM/AINTL-Unmanaged` | **AINTL Un-managed** (prompts/agents) | None declared (conceptually downstream of AINTL) |
 
-The ASM Package is a sophisticated Salesforce application designed to enhance recruitment efficiency through advanced resume parsing, intelligent candidate search, and comprehensive skills management. It integrates seamlessly with leading resume parsing services and provides powerful search capabilities.
+## Dependency chain
 
-### Key Features
+```
+ASYMBL-ATS (bpats core)
+  └─ Asymbl Search & Match (ASM/asm)                depends on: ASYMBL-ATS
+       └─ Asymbl Intelligence (ASM/asymbl-intelligence)   depends on: ASYMBL-ATS + Asymbl Search & Match
+            └─ AINTL-Unmanaged (ASM/AINTL-Unmanaged)      depends on: nothing declared — standalone,
+                                                            conceptually downstream of AINTL only
+```
 
-- **Resume Parsing**: Advanced resume parsing with Daxtra and RChilli integration
-- **Candidate Search**: Intelligent search algorithms with skills matching
-- **Skills Management**: Comprehensive skills tracking and assessment
-- **Education History**: Detailed education background management
-- **Employment History**: Complete professional experience tracking
-- **LWC Components**: Modern Lightning Web Components for enhanced user experience
-- **Custom Objects**: Specialized objects for education, employment, and skills data
+Verified directly from each repo's `sfdx-project.json` on `master` (2026-10-30):
 
-## 📊 Package Statistics
+- `ASM/asm` — package `Asymbl Search & Match`, v0.167.0, one dependency: `ASYMBL-ATS` (1.149.0.LATEST).
+- `ASM/asymbl-intelligence` — package `Asymbl Intelligence`, v0.26.0, two dependencies: `ASYMBL-ATS`
+  (1.134.5.LATEST) and `Asymbl Search & Match` (0.115.0.LATEST). Also grants access to the
+  `EinsteinGPTPromptTemplateManager` permission set via `packageMetadataAccess` (Einstein
+  GPT/Agentforce prompt tooling), without shipping that permission set itself.
+- `ASM/AINTL-Unmanaged` — no `sfdx-project.json` dependency block at all on `master` (see caveat
+  below); not a 2GP managed package — it ships as an **unmanaged** package via its own GitHub Action
+  (`AINTL-SF-Unmanaged-Package-Creation.yml`), unlike its two siblings.
 
-| Metric | Count |
-|--------|-------|
-| **Apex Classes** | 76 |
-| **Triggers** | 3 |
-| **Custom Objects** | 3 |
-| **Lightning Web Components** | 24 |
-| **Custom Metadata Types** | 5 |
-| **Resume Parsing Providers** | 2 (Daxtra, RChilli) |
-| **Core ERD Diagrams** | 8+ |
+A change low in this chain (ATS core) can ripple upward through all three ASM repos; the reverse is
+not true. See `/Repos/CI-OVERVIEW.md` for the cross-repo CI/CD job map, including the two
+parallel-but-distinct `...-To-AINTL(Daxtra)-Staging-Deploy.yml` jobs (one owned by `bpats`, one
+owned by `asm`) that both deploy into the same `aintlstaging.com` org.
 
-## 🗺️ Entity Relationship Diagrams
+## Critical caveat: `AINTL-Unmanaged`'s `master` branch is effectively empty
 
-Our documentation includes comprehensive ERD diagrams organized by functional area:
+As of 2026-10-30, `ASM/AINTL-Unmanaged`'s `master` branch contains **only a one-line `README.md`**
+(`# AINTL-Unmanaged`) — no `force-app`, no `manifest/package.xml`, no prompt templates, no CI
+workflows. `git log master` shows exactly two commits since repo creation (2025-07-02): the initial
+commit and a trivial README update.
 
-### Core Business Process ERDs
+All real content — the two GenAI prompt templates (`NLP_to_Daxtra_Request`,
+`Search_Query_Analyzer`), `sfdx-project.json`, `manifest/package.xml`, and the
+`AINTL-SF-Unmanaged-Package-Creation.yml` GitHub Actions workflow — exists only on the `packaging`
+branch (and two now-merged-into-packaging feature branches), and was **never merged into `master`**.
 
-| ERD Diagram | Description | Key Objects |
-|-------------|-------------|-------------|
-| [**Resume Parsing Architecture**](ERD_Resume_Parsing.md) | Daxtra and RChilli integration workflows | ASM_Education_History__c, Employment_History__c |
-| [**Skills Management**](ERD_Skills_Management.md) | Skills tracking, assessment, and matching | ASM_Skill__c, Skills matching algorithms |
-| [**Education History Management**](ERD_Education_History.md) | Education background tracking and validation | ASM_Education_History__c |
-| [**Employment History Management**](ERD_Employment_History.md) | Professional experience and career progression | Employment_History__c |
+This documentation set was built to the letter of the instruction to read `master` everywhere. The
+[`AINTL-Unmanaged/README.md`](AINTL-Unmanaged/README.md) in this folder documents both facts
+explicitly: what `master` actually contains (next to nothing) and what exists on `packaging` (the
+real prompt/agent content), clearly labeled so the two are never confused. If you need the real
+AINTL-Unmanaged documentation, treat the `packaging`-branch content in that file as the operative
+reference, and flag to the repo owner that `master` is stale/abandoned relative to `packaging`.
 
-### Technical Architecture ERDs
+## What's in each subfolder
 
-| ERD Diagram | Description | Coverage |
-|-------------|-------------|----------|
-| [**Search and Match Engine**](ERD_Search_Match_Engine.md) | Candidate search algorithms and matching logic | Search parameters, matching criteria |
-| [**Parsing Integration Objects**](ERD_Parsing_Integration.md) | Resume parsing service integrations | Daxtra, RChilli APIs and data mapping |
-| [**LWC Component Architecture**](ERD_LWC_Components.md) | Lightning Web Component structure and interactions | Component relationships, data flow |
-| [**Custom Metadata Configuration**](ERD_Custom_Metadata.md) | Configuration objects and settings management | Metadata types and configuration |
+### [`asm/`](asm/) — Asymbl Search & Match
+The original, most mature documentation set in this group (first written ~2025-07-10, now refreshed
+against `master` as of 2026-08-09). Covers: 53 LWC components, 103 ApexClass package.xml members
+(~53 unique classes incl. tests), 9 custom objects (4 business objects + 5 `__mdt` config types),
+242 CustomMetadata records, Daxtra/RChilli resume-parsing integration architecture, and UI
+components (Quick Actions, Tabs, Layouts). See its own `README.md`... actually this subfolder has no
+separate README — start at [`ASM_Package_Documentation.md`](asm/ASM_Package_Documentation.md).
 
-### System Extension ERDs
+### [`asymbl-intelligence/`](asymbl-intelligence/) — Asymbl Intelligence (AINTL)
+New documentation, written from scratch for this restructuring (no prior docs existed for this repo
+in this folder). Covers the AI/search layer built on top of `asm`: AINTL Advanced Search, Candidate
+Detail views, the `AINTL_Generic_Setting__mdt` configuration object, and its Einstein GPT prompt
+template permission-set grant. Read as of `master` @ 2026-07-29.
 
-| ERD Diagram | Description | Objects Covered |
-|-------------|-------------|-----------------|
-| [**Standard Object Extensions**](ERD_Standard_Object_Extensions.md) | Custom fields on standard Salesforce objects | Contact, Account extensions |
-| [**Trigger Architecture**](ERD_Trigger_Architecture.md) | Trigger implementations and automation logic | Before/after triggers, bulk processing |
+### [`AINTL-Unmanaged/`](AINTL-Unmanaged/) — prompts/agents (unmanaged package)
+New documentation, written from scratch. See the critical caveat above — this subfolder's README
+documents the `master`/`packaging` discrepancy directly rather than glossing over it.
 
-### Audit and Completeness
+## Why this was restructured
 
-| ERD Diagram | Purpose |
-|-------------|---------|
-| [**Missing Objects Complete**](ERD_Missing_Objects_Complete.md) | Documentation of objects not covered in other ERDs |
-| [**Audit Missing Objects**](ERD_Audit_Missing_Objects.md) | Comprehensive audit report of documentation gaps |
-| [**ERD Index**](ERD_Index.md) | Master index of all ERD diagrams with cross-references |
+The previous flat `ASM/` folder (four files: `README.md`, `ASM_Package_Documentation.md`,
+`ASM_Integration_Architecture.md`, `ASM_UI_Components_Architecture.md`, `ERD_Index.md`, plus a
+stray `ASM/AIN/` subfolder) presented all content as if "ASM" were one undifferentiated product.
+Investigation confirmed:
 
-## 📖 Core Documentation
-
-### Main Package Documentation
-
-**[ASM Package Documentation](ASM_Package_Documentation.md)** - The comprehensive guide containing:
-
-- Complete Apex class inventory and functionality
-- Trigger implementation details and logic
-- Custom object field-level documentation
-- Lightning Web Component specifications
-- Resume parsing integration architecture
-- Search and match algorithm documentation
-- Skills management workflows
-- Security and permission model
-- Implementation guidelines
-- Best practices and recommendations
-
-*This is the primary reference document for understanding the complete ASM package structure and functionality.*
-
-## 🏗️ Object Categories
-
-### 1. Core Custom Objects
-- **ASM_Education_History__c**: Educational background and qualifications
-- **Employment_History__c**: Professional experience and employment records
-- **ASM_Skill__c**: Skills inventory and proficiency tracking
-
-### 2. Apex Architecture
-- **76 Apex Classes**: Comprehensive business logic implementation
-- **Resume Parsing Controllers**: Daxtra and RChilli integration classes
-- **Search Engine Classes**: Advanced candidate search algorithms
-- **Skills Management Classes**: Skills assessment and matching logic
-- **Utility Classes**: Helper methods and common functionality
-
-### 3. Lightning Web Components
-- **24 LWC Components**: Modern user interface components
-- **Resume Upload Components**: Drag-and-drop resume processing
-- **Search Interface Components**: Advanced search and filter capabilities
-- **Skills Assessment Components**: Interactive skills evaluation tools
-- **Dashboard Components**: Analytics and reporting displays
-
-### 4. Triggers and Automation
-- **3 Triggers**: Event-driven automation
-- **Data Validation Triggers**: Ensure data quality and consistency
-- **Integration Triggers**: Handle external service callbacks
-- **Workflow Triggers**: Automate business processes
-
-## 🔗 Integration Architecture
-
-The ASM package includes robust integration capabilities:
-
-### Resume Parsing Services
-- **Daxtra**: AI-powered resume parsing with advanced field extraction
-- **RChilli**: Comprehensive resume parsing with skills identification
-- **Multi-provider Support**: Fallback mechanisms and provider selection
-
-### Search and Match Engine
-- **Intelligent Search**: Advanced search algorithms with fuzzy matching
-- **Skills Matching**: Semantic skills comparison and scoring
-- **Education Matching**: Degree and qualification equivalency
-- **Experience Matching**: Professional background alignment
-
-### Custom Metadata Configuration
-- **Parsing Configuration**: Provider-specific settings and mappings
-- **Search Parameters**: Configurable search weights and criteria
-- **Skills Taxonomy**: Hierarchical skills categorization
-- **Integration Settings**: API endpoints and authentication
-
-## 🚀 Getting Started
-
-### For Developers
-1. Start with [ASM Package Documentation](ASM_Package_Documentation.md) for complete technical overview
-2. Review [ERD Index](ERD_Index.md) for object relationship understanding
-3. Check [Parsing Integration ERD](ERD_Parsing_Integration.md) for resume parsing setup
-4. Explore [LWC Component Architecture](ERD_LWC_Components.md) for UI development
-
-### For Business Users
-1. Begin with [Skills Management ERD](ERD_Skills_Management.md) for skills workflow understanding
-2. Review [Resume Parsing Architecture](ERD_Resume_Parsing.md) for parsing capabilities
-3. Explore [Search and Match Engine](ERD_Search_Match_Engine.md) for search functionality
-
-### For System Administrators
-1. Study [Custom Metadata Configuration](ERD_Custom_Metadata.md) for system setup
-2. Review [Standard Object Extensions](ERD_Standard_Object_Extensions.md) for field configurations
-3. Check [Audit Missing Objects](ERD_Audit_Missing_Objects.md) for implementation completeness
-
-## 🧭 Quick Navigation
-
-### By Functional Area
-- **Resume Parsing**: [ERD](ERD_Resume_Parsing.md) | [Main Docs](ASM_Package_Documentation.md#resume-parsing)
-- **Skills Management**: [ERD](ERD_Skills_Management.md) | [Main Docs](ASM_Package_Documentation.md#skills-management)
-- **Search & Match**: [ERD](ERD_Search_Match_Engine.md) | [Main Docs](ASM_Package_Documentation.md#search-engine)
-- **Education History**: [ERD](ERD_Education_History.md) | [Main Docs](ASM_Package_Documentation.md#education-management)
-- **Employment History**: [ERD](ERD_Employment_History.md) | [Main Docs](ASM_Package_Documentation.md#employment-management)
-
-### By Component Type
-- **Apex Classes**: See [Main Documentation](ASM_Package_Documentation.md#apex-classes)
-- **Lightning Web Components**: [ERD](ERD_LWC_Components.md)
-- **Custom Objects**: [ERD Index](ERD_Index.md)
-- **Triggers**: [ERD](ERD_Trigger_Architecture.md)
-- **Integrations**: [ERD](ERD_Parsing_Integration.md)
-
-### Implementation Resources
-- **Complete Component List**: [Main Documentation](ASM_Package_Documentation.md)
-- **Missing Elements**: [Audit Report](ERD_Audit_Missing_Objects.md)
-- **Configuration Guide**: [Custom Metadata ERD](ERD_Custom_Metadata.md)
-
----
-
-## 🔍 ASM-Specific Features
-
-### Resume Parsing Capabilities
-- **Multi-Format Support**: PDF, DOC, DOCX, TXT resume processing
-- **Field Extraction**: Contact information, experience, education, skills
-- **Language Support**: Multiple language resume parsing
-- **Accuracy Validation**: Quality scoring and confidence levels
-
-### Advanced Search Features
-- **Boolean Search**: Complex search queries with operators
-- **Fuzzy Matching**: Handle spelling variations and synonyms
-- **Semantic Search**: Context-aware skills and experience matching
-- **Faceted Search**: Multi-dimensional filtering capabilities
-
-### Skills Intelligence
-- **Skills Taxonomy**: Hierarchical skills categorization
-- **Skills Matching**: Semantic similarity scoring
-- **Gap Analysis**: Identify missing skills and competencies
-- **Proficiency Levels**: Skill assessment and rating systems
-
-### Lightning Experience
-- **Modern UI**: Lightning Web Components for enhanced user experience
-- **Responsive Design**: Mobile-friendly interface components
-- **Real-time Updates**: Live search and instant feedback
-- **Accessibility**: WCAG-compliant components
-
----
-
-## 📝 Documentation Notes
-
-- All ERD diagrams use Mermaid syntax for consistent visualization
-- Apex class documentation includes method signatures and usage examples
-- Lightning Web Component specifications include property and method documentation
-- Integration guides provide step-by-step configuration instructions
-- Cross-references between documents provide complete navigation paths
-- Audit documentation ensures implementation completeness
-
-For questions or contributions to this documentation, please refer to the main repository structure and contribution guidelines.
-
----
-
-**ASM Package Version**: Latest  
-**Last Updated**: July 2025  
-**Documentation Coverage**: Comprehensive  
-**Integration Status**: Daxtra ✓ | RChilli ✓
+1. **All four flat `.md` files were entirely and exclusively about the `ASM/asm` repo** — none
+   mentioned `asymbl-intelligence` or `AINTL-Unmanaged` at all (e.g. every object, Apex class, and
+   LWC name used the `ASM_`/`asm` prefix, never `AINTL_`/`aintl`). They have been moved, not
+   duplicated, into `asm/` and corrected in place (see change summary below).
+2. **`ASM/AIN/README.md` was misplaced AIN (asymbl-integration) content**, unrelated to any of the
+   three ASM-group repos. Its content (component counts, Beeline/Indeed integration architecture,
+   links to `AIN_Package_Overview.md` etc.) was fully and more thoroughly duplicated already in the
+   top-level `/Repos/ProductDocumentations/AIN/` folder (12 files vs. this stub's 1). Nothing unique
+   was found in `ASM/AIN/README.md` that wasn't already covered, in more depth and more recently, in
+   the real AIN folder — so the stray `ASM/AIN/` nesting was removed without any content loss.
