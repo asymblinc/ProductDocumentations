@@ -2,381 +2,235 @@
 
 ## Overview
 
-This document provides an Entity Relationship Diagram (ERD) for the Calendar and Holiday Management components of the Asymbl Time package. These objects work together to define working calendars, holidays, pay rules, and their associations with accounts for proper time tracking and payroll calculations.
+This document provides an Entity Relationship Diagram (ERD) for the Calendar, Holiday, and Pay Rule components of the Asymbl Time package. All fields and relationships below were verified directly against `force-app/main/default/objects/*/fields/*.field-meta.xml` on the `master` branch (commit `38a8d3eb`, 2026-10-30), and represent a **much simpler** data model than previously documented — there is no calendar hierarchy, no floating-holiday engine, and no calendar-to-pay-rule relationship in the current package.
 
 ### Key Components:
-1. **Calendar__c** - Defines working calendars with business hours and rules
-2. **Calendar_Link__c** - Junction object linking calendars to accounts
-3. **Holiday__c** - Holiday definitions with dates and observance rules
-4. **Pay_Rule__c** - Overtime and pay calculation rules
-5. **Account** - Extended with pay period configurations
+1. **Calendar__c** - A minimal calendar record (country/state/year/color) that Holidays roll up to
+2. **Calendar_Link__c** - A junction object linking a Calendar to an Account (dual master-detail; no other fields)
+3. **Holiday__c** - Holiday definitions (date + description only), master-detail child of Calendar__c
+4. **Pay_Rule__c** - Standalone overtime/double-time calculation rules, referenced directly from `Timesheet__c`
+5. **Account** - Extended with 2 pay-period fields
 
 ## Entity Relationship Diagram
 
 ```mermaid
 erDiagram
     Calendar__c {
-        string Name
-        string Calendar_Code__c
-        boolean Is_Active__c
+        string Color__c "Picklist of hex colors, for UI display"
+        string Country_Code__c "United States / Other Country"
         boolean Is_Default__c
-        string Calendar_Type__c
-        date Effective_Start_Date__c
-        date Effective_End_Date__c
-        string Country_Code__c
-        string State_Province_Code__c
-        string Description__c
-        number Standard_Work_Hours_Per_Day__c
-        number Standard_Work_Hours_Per_Week__c
-        time Default_Start_Time__c
-        time Default_End_Time__c
-        multiselect Working_Days__c
-        string Time_Zone__c
-        lookup Parent_Calendar__c
-        boolean Include_Parent_Holidays__c
-        string Calendar_Year__c
-        formula Total_Working_Days__c
-        formula Total_Holidays__c
+        string State_Code__c "US state picklist"
+        string Year__c "Text"
+        rollup Total_Holidays__c "Summary (count of child Holiday__c)"
+        rollup Total_Linked_Account__c "Summary (count of child Calendar_Link__c)"
     }
 
     Calendar_Link__c {
-        lookup Calendar__c
-        lookup Account__c
-        date Effective_From__c
-        date Effective_To__c
-        boolean Is_Primary__c
-        string Link_Type__c
-        string Override_Rules__c
-        boolean Apply_Holidays__c
-        boolean Apply_Pay_Rules__c
-        string Status__c
-        text Notes__c
+        masterdetail Account__c
+        masterdetail Calendar__c
     }
 
     Holiday__c {
-        string Name
-        string Holiday_Code__c
-        lookup Calendar__c
-        date Holiday_Date__c
-        string Holiday_Type__c
-        boolean Is_Recurring__c
-        string Recurrence_Pattern__c
-        boolean Is_Floating__c
-        string Floating_Rule__c
-        string Country_Code__c
-        string State_Province_Code__c
-        boolean Is_Federal__c
-        boolean Is_Banking_Holiday__c
-        boolean Is_Optional__c
-        string Observance_Rule__c
-        date Observed_Date__c
-        number Holiday_Hours__c
-        percent Holiday_Pay_Rate__c
-        string Description__c
-        boolean Is_Active__c
-        multiselect Applicable_Employee_Types__c
+        masterdetail Calendar__c
+        date Date__c
+        text Description__c
     }
 
     Pay_Rule__c {
-        string Name
-        string Rule_Code__c
-        lookup Calendar__c
-        string Rule_Type__c
-        boolean Is_Active__c
-        date Effective_Start_Date__c
-        date Effective_End_Date__c
-        number Daily_Regular_Hours_Limit__c
-        number Weekly_Regular_Hours_Limit__c
-        number Daily_Overtime_Threshold__c
-        number Weekly_Overtime_Threshold__c
-        number Daily_Double_Time_Threshold__c
-        number Weekly_Double_Time_Threshold__c
-        percent Overtime_Pay_Multiplier__c
-        percent Double_Time_Pay_Multiplier__c
-        percent Holiday_Pay_Multiplier__c
-        string Overtime_Calculation_Method__c
-        boolean Apply_Daily_Overtime_First__c
-        boolean Include_Holiday_Hours_In_OT__c
-        boolean Include_PTO_Hours_In_OT__c
-        string Rounding_Rules__c
-        number Rounding_Increment__c
-        string Break_Rules__c
-        string Meal_Period_Rules__c
-        string State_Province_Code__c
-        multiselect Applicable_Employee_Classifications__c
-        number Consecutive_Day_Overtime_Threshold__c
-        percent Seventh_Day_Pay_Multiplier__c
+        string Country_Code__c
+        string State_Code__c
+        string Type__c "Weekly / Weekly + Daily / Weekly + Daily (Double Time)"
+        number Daily_Limit__c
+        number Weekly_Limit__c
+        number Double_Time_Start__c
+        string Seventh_Day__c "No / Overtime / Double Time / Both"
+        number Seventh_Day_Double_Time_Start__c
+        boolean Enable_Attestation__c
     }
 
     Account {
-        string Pay_Period_Type__c
-        date Pay_Period_Start_Date__c
-        number Pay_Period_Duration_Days__c
-        string Pay_Period_End_Day__c
-        string Payroll_Frequency__c
-        date Next_Pay_Period_Start__c
-        date Next_Pay_Period_End__c
-        string Time_Entry_Approval_Process__c
-        number Time_Entry_Submission_Deadline_Days__c
-        boolean Auto_Create_Timesheets__c
-        string Default_Calendar_Code__c
-        boolean Apply_Federal_Holidays__c
-        boolean Apply_State_Holidays__c
-        string Holiday_Policy__c
-        string Overtime_Policy__c
-        multiselect Enabled_Pay_Rules__c
+        string Pay_Period_Type__c "Weekly / Bi-Weekly / Bi-Monthly"
+        string Pay_Period_Start_Day__c "Day of week, controlled by Pay_Period_Type__c"
     }
 
     Contact {
-        string Employment_Classification__c
-        lookup Default_Calendar__c
-        multiselect Holiday_Eligibility__c
-        string Pay_Rule_Override__c
+        string Employment_Classification__c "Exempt / Non-Exempt"
     }
 
     Timesheet__c {
-        lookup Pay_Rule_Applied__c
-        number Holiday_Hours__c
-        text Holiday_Details__c
+        lookup Pay_Rule__c
+        date Pay_Period_Start_Date__c
+        date Pay_Period_End_Date__c
+    }
+
+    AST_Holidays_Setting__mdt {
+        text US_Holidays_JSON__c "Single JSON blob of default US holidays"
+    }
+
+    AST_Pay_Rule__mdt {
+        text Pay_Rule_JSON__c "Single JSON blob of default pay rules"
     }
 
     %% Relationships
-    Calendar__c ||--o{ Calendar_Link__c : "linked to accounts"
-    Account ||--o{ Calendar_Link__c : "uses calendars"
-    Calendar__c ||--o{ Holiday__c : "defines holidays"
-    Calendar__c ||--o{ Pay_Rule__c : "has pay rules"
-    Calendar__c ||--o| Calendar__c : "inherits from parent"
-    Contact }o--o| Calendar__c : "assigned default calendar"
-    Timesheet__c }o--o| Pay_Rule__c : "calculated using rule"
-    
+    Account ||--o{ Calendar_Link__c : "Account__c (Master-Detail)"
+    Calendar__c ||--o{ Calendar_Link__c : "Calendar__c (Master-Detail)"
+    Calendar__c ||--o{ Holiday__c : "Calendar__c (Master-Detail)"
+    Timesheet__c }o--o| Pay_Rule__c : "Pay_Rule__c (lookup)"
+    Contact ||--o| Account : "AccountId (standard)"
+
     %% Color coding
     classDef calendarObject fill:#4A90E2,stroke:#333,stroke-width:2px,color:#fff
     classDef linkObject fill:#7ED321,stroke:#333,stroke-width:2px,color:#fff
     classDef configObject fill:#9013FE,stroke:#333,stroke-width:2px,color:#fff
     classDef externalObject fill:#F5A623,stroke:#333,stroke-width:2px,color:#fff
-    
+
     class Calendar__c,Holiday__c calendarObject
     class Calendar_Link__c linkObject
-    class Pay_Rule__c configObject
+    class Pay_Rule__c,AST_Holidays_Setting__mdt,AST_Pay_Rule__mdt configObject
     class Account,Contact,Timesheet__c externalObject
 ```
 
 ## Object Descriptions
 
-### 1. Calendar__c (Core Calendar Object)
-The master calendar object that defines working days, hours, and serves as a container for holidays and pay rules. Supports hierarchical calendars with parent-child relationships.
+### 1. Calendar__c
+A minimal container record that Holidays attach to and that Accounts link to via `Calendar_Link__c`.
 
-**Key Features:**
-- Defines standard working hours and days
-- Country and state-specific configurations
-- Can inherit holidays from parent calendars
-- Supports multiple calendar types (Standard, Shift-based, Custom)
-- Time zone aware for global operations
+**Verified fields (7 custom fields total):**
+- `Is_Default__c` (Checkbox)
+- `Country_Code__c` (Picklist: `United States`, `Other Country`)
+- `State_Code__c` (Picklist: full US state list)
+- `Year__c` (Text)
+- `Color__c` (Picklist of hex color codes — purely a UI display aid, e.g. in `astCalendarCard` / `astHolidayCalendar`)
+- `Total_Holidays__c` (Summary rollup of child `Holiday__c` records)
+- `Total_Linked_Account__c` (Summary rollup of child `Calendar_Link__c` records)
+
+**Not present** (despite prior documentation): `Calendar_Code__c`, `Calendar_Type__c`, `Standard_Work_Hours_Per_Day__c`, `Working_Days__c`, `Default_Start_Time__c`/`Default_End_Time__c`, `Parent_Calendar__c`, `Time_Zone__c`, `Include_Parent_Holidays__c`. There is **no calendar hierarchy** in this package.
 
 ### 2. Calendar_Link__c (Junction Object)
-Links calendars to accounts with effective dating, allowing organizations to change calendars over time or use different calendars for different purposes.
+A pure junction object between `Account` and `Calendar__c`, implemented as a **dual master-detail** (master-detail to both parents simultaneously) — sharing model `ControlledByParent`.
 
-**Key Features:**
-- Effective dated relationships
-- Primary/secondary calendar designation
-- Selective application of holidays and pay rules
-- Override capabilities for specific rules
+**Verified fields:** `Account__c` (Master-Detail → Account), `Calendar__c` (Master-Detail → Calendar__c). No other custom fields exist on this object — no effective dating, no primary/secondary flag, no override-rules JSON, and no apply-holidays/apply-pay-rules toggles.
 
-### 3. Holiday__c (Holiday Definition Object)
-Comprehensive holiday tracking with support for fixed, floating, and recurring holidays with complex observance rules.
+### 3. Holiday__c (Master-Detail child of Calendar__c)
+A simple dated holiday record, sharing model `ControlledByParent`.
 
-**Key Features:**
-- Fixed and floating holiday support
-- Federal, state, and custom holidays
-- Observance rules (e.g., Monday observance for weekend holidays)
-- Holiday pay rate configurations
-- Employee type eligibility
+**Verified fields:** `Calendar__c` (Master-Detail), `Date__c` (Date), `Description__c` (Long Text Area). There is **no** `Holiday_Type__c`, `Is_Recurring__c`, `Recurrence_Pattern__c`, `Is_Floating__c`/`Floating_Rule__c`, `Observance_Rule__c`/`Observed_Date__c`, `Holiday_Pay_Rate__c`, or employee-type eligibility field on this object. Floating-holiday logic, recurrence, and weekend-observance adjustment do not exist in the current data model.
 
-### 4. Pay_Rule__c (Overtime & Pay Calculation Rules)
-Defines complex pay rules including daily and weekly overtime thresholds, double-time rules, and special calculations.
+A separate, unrelated mechanism — `AST_Holidays_Setting__mdt.US_Holidays_JSON__c` — ships a single JSON blob of default US holidays as Custom Metadata, used to seed suggested holidays rather than to drive a holiday calculation engine.
 
-**Key Features:**
-- Daily and weekly overtime thresholds
-- Double-time configurations
-- Holiday pay multipliers
-- State-specific compliance rules
-- Consecutive day overtime (e.g., 7th day rules)
-- Rounding and break rules
+### 4. Pay_Rule__c (Standalone Overtime/Double-Time Rule)
+**Not related to `Calendar__c` at all** — there is no lookup field connecting `Pay_Rule__c` to `Calendar__c` in either direction. `Pay_Rule__c` is referenced directly from `Timesheet__c.Pay_Rule__c` (lookup), and that single Pay Rule governs the entire timesheet's OT/DT calculation.
+
+**Verified fields (9 custom fields total):**
+- `Country_Code__c` / `State_Code__c` (same picklists as Calendar__c)
+- `Type__c` (Picklist, restricted): `Weekly`, `Weekly + Daily`, `Weekly + Daily (Double Time)`
+- `Daily_Limit__c` / `Weekly_Limit__c` (Number) — hours before OT
+- `Double_Time_Start__c` (Number) — hours before DT
+- `Seventh_Day__c` (Picklist): `No`, `Overtime`, `Double Time`, `Both`
+- `Seventh_Day_Double_Time_Start__c` (Number)
+- `Enable_Attestation__c` (Checkbox)
+
+**Not present**: `Rounding_Rules__c`, `Break_Rules__c`/`Meal_Period_Rules__c`, `Holiday_Pay_Multiplier__c`, `Overtime_Calculation_Method__c`, `Apply_Daily_Overtime_First__c`, `Applicable_Employee_Classifications__c`, `Effective_Start_Date__c`/`Effective_End_Date__c`. There is also a separate `AST_Pay_Rule__mdt.Pay_Rule_JSON__c` (single JSON field) shipping default pay rule presets as Custom Metadata, independent of the `Pay_Rule__c` sObject.
 
 ### 5. Account (Extended for Pay Periods)
-Standard Account object extended with pay period configurations and calendar associations.
+Exactly **2** custom fields added by this package:
+- `Pay_Period_Type__c` (Picklist, restricted): `Weekly`, `Bi-Weekly`, `Bi-Monthly`
+- `Pay_Period_Start_Day__c` (Picklist, controlled by `Pay_Period_Type__c`): day of week
 
-**Key Features:**
-- Pay period definitions and frequencies
-- Calendar and holiday policy settings
-- Timesheet automation controls
-- Approval process configurations
+**Not present**: `Pay_Period_Duration_Days__c`, `Payroll_Frequency__c`, `Next_Pay_Period_Start__c`/`Next_Pay_Period_End__c`, `Time_Entry_Approval_Process__c`, `Auto_Create_Timesheets__c`, `Default_Calendar_Code__c`, `Apply_Federal_Holidays__c`/`Apply_State_Holidays__c`, `Overtime_Policy__c`. Next-pay-period generation is handled procedurally by `AST_CreateTimesheetsBatchable`/`AST_GenerateNextTimesheet`, not by additional Account configuration fields.
+
+### 6. Contact (Extended)
+Exactly **1** custom field: `Employment_Classification__c` (Picklist, restricted): `Exempt`, `Non-Exempt` (default `Non-Exempt`). There is no `Default_Calendar__c`, `Holiday_Eligibility__c`, or `Pay_Rule_Override__c` field on Contact.
 
 ## Field Details
 
 ### Calendar__c Key Fields
 
-| Field | Type | Description | Business Logic |
-|-------|------|-------------|----------------|
-| Calendar_Code__c | Text(20) | Unique calendar identifier | Used for integration and quick reference |
-| Is_Default__c | Checkbox | System default calendar | Only one can be default at a time |
-| Calendar_Type__c | Picklist | Standard, Shift, Custom, Compressed | Determines calculation methods |
-| Standard_Work_Hours_Per_Day__c | Number(3,1) | Default daily hours (e.g., 8.0) | Used for holiday pay calculations |
-| Working_Days__c | Multi-Select | Mon;Tue;Wed;Thu;Fri;Sat;Sun | Defines regular working days |
-| Parent_Calendar__c | Lookup | Hierarchical calendar reference | Inherits holidays if configured |
-| Country_Code__c | Text(2) | ISO country code | Filters applicable holidays |
-| State_Province_Code__c | Text(5) | State/Province code | Regional holiday filtering |
+| Field | Type | Description |
+|-------|------|-------------|
+| Is_Default__c | Checkbox | System default calendar flag |
+| Country_Code__c | Picklist | `United States` / `Other Country` |
+| State_Code__c | Picklist | Full US state list |
+| Year__c | Text | Free-text year label |
+| Color__c | Picklist | Hex color code for UI display |
+| Total_Holidays__c | Summary (rollup) | Count/sum from child `Holiday__c` |
+| Total_Linked_Account__c | Summary (rollup) | Count/sum from child `Calendar_Link__c` |
 
 ### Holiday__c Key Fields
 
-| Field | Type | Description | Business Logic |
-|-------|------|-------------|----------------|
-| Holiday_Type__c | Picklist | Federal, State, Company, Religious, Other | Categorizes holidays |
-| Is_Recurring__c | Checkbox | Annual recurrence | Auto-generates for future years |
-| Recurrence_Pattern__c | Picklist | Fixed_Date, Nth_Weekday, Last_Weekday, Easter_Based | Calculation method |
-| Floating_Rule__c | Text | "3rd Monday of January" | Complex date calculations |
-| Observance_Rule__c | Picklist | Actual_Day, Nearest_Weekday, Monday_If_Weekend | Weekend adjustment rules |
-| Holiday_Pay_Rate__c | Percent | 150%, 200%, etc. | Premium pay multiplier |
-| Applicable_Employee_Types__c | Multi-Select | Full_Time;Part_Time;Contract;Hourly | Eligibility rules |
+| Field | Type | Description |
+|-------|------|-------------|
+| Calendar__c | Master-Detail | Parent calendar |
+| Date__c | Date | Holiday date |
+| Description__c | Long Text Area | Free-text description |
 
 ### Pay_Rule__c Key Fields
 
-| Field | Type | Description | Business Logic |
-|-------|------|-------------|----------------|
-| Daily_Regular_Hours_Limit__c | Number(3,1) | Standard day (e.g., 8) | Hours before OT kicks in |
-| Weekly_Regular_Hours_Limit__c | Number(3,1) | Standard week (e.g., 40) | Weekly OT threshold |
-| Daily_Overtime_Threshold__c | Number(3,1) | Daily OT start (e.g., 8) | When 1.5x pay begins |
-| Daily_Double_Time_Threshold__c | Number(3,1) | Daily DT start (e.g., 12) | When 2x pay begins |
-| Overtime_Calculation_Method__c | Picklist | Daily_First, Weekly_First, Greater_Of | Calculation precedence |
-| Apply_Daily_Overtime_First__c | Checkbox | Process daily before weekly | California compliance |
-| Consecutive_Day_Overtime_Threshold__c | Number | Days before special OT (e.g., 7) | 7th day rules |
-| Rounding_Rules__c | Picklist | None, Nearest_Quarter, Nearest_Tenth | Time rounding method |
+| Field | Type | Description |
+|-------|------|-------------|
+| Type__c | Picklist | `Weekly`, `Weekly + Daily`, `Weekly + Daily (Double Time)` |
+| Daily_Limit__c | Number | Hours/day before OT |
+| Weekly_Limit__c | Number | Hours/week before OT |
+| Double_Time_Start__c | Number | Hours before DT begins |
+| Seventh_Day__c | Picklist | `No`, `Overtime`, `Double Time`, `Both` |
+| Seventh_Day_Double_Time_Start__c | Number | Hours threshold for 7th-day DT |
+| Enable_Attestation__c | Checkbox | Whether break attestation is required under this rule |
 
-### Calendar_Link__c Key Fields
+### Calendar_Link__c Fields
 
-| Field | Type | Description | Business Logic |
-|-------|------|-------------|----------------|
-| Link_Type__c | Picklist | Primary, Secondary, Override | Relationship type |
-| Effective_From__c | Date | Start date of association | Time-bound relationships |
-| Apply_Holidays__c | Checkbox | Use calendar's holidays | Selective feature application |
-| Apply_Pay_Rules__c | Checkbox | Use calendar's pay rules | Selective rule application |
-| Override_Rules__c | Long Text | JSON override configuration | Custom rule modifications |
+| Field | Type | Description |
+|-------|------|-------------|
+| Account__c | Master-Detail(Account) | Parent account |
+| Calendar__c | Master-Detail(Calendar__c) | Linked calendar |
 
-## Business Logic and Calculations
+## Business Logic
 
-### 1. Holiday Observance Rules
+### 1. OT/DT Calculation (actual implementation)
+
+Performed in `AST_TimeEntryTriggerHelper.updateHoursOnTimeEntries()` against the single `Pay_Rule__c` linked to the parent `Timesheet__c`:
 
 ```
-IF Holiday falls on Saturday THEN
-    IF Observance_Rule = 'Monday_If_Weekend' THEN
-        Observed_Date = Holiday_Date + 2 days
-    ELSE IF Observance_Rule = 'Nearest_Weekday' THEN
-        Observed_Date = Holiday_Date - 1 day (Friday)
-    ELSE
-        Observed_Date = Holiday_Date
-END IF
+Based on Pay_Rule__c.Type__c:
+- 'Weekly': OT calculated only against Weekly_Limit__c
+- 'Weekly + Daily': OT calculated against both Daily_Limit__c and Weekly_Limit__c
+- 'Weekly + Daily (Double Time)': adds Double_Time_Start__c as a DT threshold
+
+7th consecutive day worked in the period:
+- Seventh_Day__c = 'Overtime' -> all hours on 7th day paid at OT
+- Seventh_Day__c = 'Double Time' -> all hours on 7th day paid at DT after Seventh_Day_Double_Time_Start__c
+- Seventh_Day__c = 'Both' -> combination
+- Seventh_Day__c = 'No' -> no special 7th-day treatment
 ```
 
-### 2. Overtime Calculation Priority
+### 2. Holiday Seeding (not a calculation engine)
 
-```
-Daily OT Calculation:
-- Regular Hours = MIN(Hours_Worked, Daily_Regular_Hours_Limit)
-- Daily_OT = MIN(MAX(Hours_Worked - Daily_Regular_Hours_Limit, 0), 
-                 Daily_Double_Time_Threshold - Daily_Regular_Hours_Limit)
-- Daily_DT = MAX(Hours_Worked - Daily_Double_Time_Threshold, 0)
+`AST_Holidays_Setting__mdt.US_Holidays_JSON__c` provides a JSON list of default US holidays that admin tooling can use to pre-populate `Holiday__c` records under a Calendar. There is no automatic weekend-observance shifting, no recurrence generation for future years, and no holiday pay-rate multiplier anywhere in the data model.
 
-Weekly OT Calculation:
-- Total_Regular_Week = SUM(Daily_Regular) for week
-- Weekly_OT = MAX(Total_Regular_Week - Weekly_Regular_Hours_Limit, 0)
+### 3. Pay Period Determination
 
-Final OT (depends on Overtime_Calculation_Method):
-- If 'Daily_First': Use daily calculations as primary
-- If 'Weekly_First': Recalculate based on weekly totals
-- If 'Greater_Of': Use whichever produces more OT hours
-```
-
-### 3. Holiday Pay Calculations
-
-```
-Holiday Pay = Standard_Work_Hours_Per_Day × Base_Pay_Rate × Holiday_Pay_Rate_Multiplier
-
-If employee works on holiday:
-    Total_Pay = (Hours_Worked × Base_Pay_Rate × Holiday_Pay_Rate_Multiplier) + Holiday_Pay
-```
-
-### 4. Calendar Hierarchy
-
-```
-Child Calendar inherits from Parent:
-- Holidays (if Include_Parent_Holidays__c = true)
-- Can override specific holidays
-- Can add additional local holidays
-- Pay rules are calendar-specific (not inherited)
-```
-
-### 5. Pay Period Calculations
-
-```
-Next_Pay_Period_Start = Previous_End_Date + 1 day
-Next_Pay_Period_End = Next_Pay_Period_Start + Pay_Period_Duration_Days - 1
-
-If Pay_Period_Type = 'Semi_Monthly':
-    Period 1: 1st - 15th
-    Period 2: 16th - End of Month
-```
+`Account.Pay_Period_Type__c` + `Account.Pay_Period_Start_Day__c` determine the cadence; actual period boundary calculation and next-timesheet creation are handled by `AST_CreateTimesheetsBatchable` (scheduled daily) and the `AST_GenerateNextTimesheet` invocable, not by calendar metadata.
 
 ## Relationship Explanations
 
-### 1. Calendar to Calendar_Link (1:M)
-- A calendar can be linked to multiple accounts
-- Links are time-bound with effective dates
-- Allows calendar changes without losing history
+### 1. Account to Calendar (M:M via Calendar_Link__c)
+`Calendar_Link__c` is a dual master-detail junction — both `Account__c` and `Calendar__c` are master-detail parents. This is an unusual but valid Salesforce pattern (a true many-to-many junction with cascade-delete from either side) rather than a lookup-based, effective-dated association as previously documented.
 
-### 2. Account to Calendar_Link (1:M)
-- An account can have multiple calendar associations
-- Primary calendar for standard operations
-- Secondary calendars for special scenarios
+### 2. Calendar to Holiday (1:M — Master-Detail)
+Each calendar can have any number of holiday records; deleting a Calendar cascades to delete its Holidays.
 
-### 3. Calendar to Holiday (1:M)
-- Each calendar defines its own holiday schedule
-- Holidays are calendar-specific
-- Child calendars can inherit parent holidays
+### 3. Timesheet to Pay Rule (M:1 — Lookup)
+Each Timesheet references exactly one `Pay_Rule__c`; `Pay_Rule__c` has no relationship back to `Calendar__c`.
 
-### 4. Calendar to Pay_Rule (1:M)
-- Multiple pay rules per calendar
-- Different rules for different employee types
-- State-specific compliance rules
-
-### 5. Calendar Parent-Child (Self-referencing)
-- Supports hierarchical calendar structures
-- National → Regional → Local calendars
-- Inheritance of holidays and settings
+### 4. No Calendar-to-Pay-Rule or Calendar-to-Contact Relationship
+Contrary to previous documentation, there is no lookup from `Calendar__c` to `Pay_Rule__c`, and no lookup from `Contact` to `Calendar__c`. Calendars currently serve only to group Holidays and link to Accounts.
 
 ## Implementation Considerations
 
-### 1. Data Integrity Rules
-- Only one primary calendar link per account at any time
-- Calendar effective dates cannot overlap for same account
-- Holiday observed dates must be calculated on save
-- Pay rules must have non-overlapping employee classifications
+### Data Integrity
+- No validation rules exist on `Calendar__c`, `Calendar_Link__c`, `Holiday__c`, or `Pay_Rule__c` in the current metadata (all 22 package validation rules live on `Rate_Card_Template__c`/`Rate_Card_Template_Detail__c` and one on `Time_Entry__c` — see the Rate Card Management ERD and Time & Attendance Core ERD).
+- Because `Calendar_Link__c` is dual master-detail, an Account/Calendar pairing cannot be re-pointed after creation without deleting and recreating the link record (standard Salesforce master-detail constraint).
 
-### 2. Performance Optimizations
-- Index Calendar_Code__c for quick lookups
-- Cache holiday calculations for current year
-- Pre-calculate pay periods for next 12 months
-- Use formula fields for derived calculations
+### Compliance Notes
+- State-specific OT/DT compliance (e.g., California daily-OT and 7th-day rules) is expressed entirely through `Pay_Rule__c.Daily_Limit__c` / `Double_Time_Start__c` / `Seventh_Day__c` configuration, not through a separate rules engine or formula layer.
 
-### 3. Compliance Requirements
-- State-specific overtime rules (e.g., California daily OT)
-- Federal holiday observance standards
-- Industry-specific requirements (healthcare, retail)
-- Audit trail for pay rule changes
-
-### 4. Integration Points
-- Sync with external payroll systems
-- Import holidays from government sources
-- Export calendar data for reporting
-- API access for time clock systems
-
-This Calendar and Holiday Management system provides comprehensive support for complex time tracking scenarios while maintaining flexibility for various business requirements and compliance needs.
+This Calendar and Pay Rule model is intentionally lightweight: Calendars primarily exist to group Holidays and associate them with Accounts; all time-calculation logic is driven by the standalone `Pay_Rule__c` object referenced directly from each Timesheet.

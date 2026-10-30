@@ -2,15 +2,15 @@
 
 ## Overview
 
-This document provides a comprehensive Entity Relationship Diagram (ERD) for the Rate Card Management system in the Asymbl Time package. The Rate Card Management system handles the complex pricing and billing structures for staffing and contingent workforce management, supporting multiple rate types, time-based variations, and sophisticated assignment criteria.
+This document provides an Entity Relationship Diagram (ERD) for the Rate Card Management system in the Asymbl Time package. All fields and relationships below were verified directly against `force-app/main/default/objects/*/fields/*.field-meta.xml` and `validationRules/*.validationRule-meta.xml` on the `master` branch (commit `38a8d3eb`, 2026-10-30). This domain's data model was found to be largely accurate in prior documentation; corrections below are narrower than in the other ERD documents.
 
 The five main objects in the Rate Card Management system are:
 
-1. **Rate_Card_Template__c** - Template definitions for standardized rate structures
-2. **Rate_Card_Template_Detail__c** - Time-based rate variations within templates
+1. **Rate_Card_Template__c** - Template definitions for standardized rate structures, scoped to an Account
+2. **Rate_Card_Template_Detail__c** - Time-based rate variations within templates (Master-Detail)
 3. **Candidate_Rate_Card__c** - Candidate-specific rate card instances
-4. **Candidate_Rate_Card_Detail__c** - Candidate-specific rate card detail instances
-5. **AST_Rate_Card_Template_Filter__c** - Dynamic filter criteria for template assignment
+4. **Candidate_Rate_Card_Detail__c** - Candidate-specific rate card detail instances (Master-Detail)
+5. **AST_Rate_Card_Template_Filter__c** - Dynamic filter criteria for template assignment (Lookup, not Master-Detail)
 
 ## Entity Relationship Diagram
 
@@ -20,10 +20,10 @@ erDiagram
         lookup Account__c
         boolean Active__c
         boolean Is_Default__c
-        string Rate_Card_Type__c
-        string AST_Rate_Card_Detail_Type__c
-        string Pay_Type__c
-        string Bill_Type__c
+        string Rate_Card_Type__c "Hourly/Daily/Unit/Location/Shift/Time Based"
+        string AST_Rate_Card_Detail_Type__c "Hourly/Daily/Unit"
+        picklist Pay_Type__c "Standard/Range/Fixed/Markup"
+        picklist Bill_Type__c "Standard/Range/Fixed/Markup/Non-Billable"
         currency Fixed_Pay_Rate__c
         currency Fixed_Bill_Rate__c
         currency Pay_Rate_Low__c
@@ -32,23 +32,28 @@ erDiagram
         currency Bill_Rate_High__c
         percent Markup__c
         percent Burden__c
+        percent Overtime_Pay_Rate_Markup__c
         percent Overtime_Bill_Rate_Markup__c
+        percent Double_Time_Pay_Rate_Markup__c
         percent Double_Time_Bill_Rate_Markup__c
         number Priority__c
         boolean Allow_Partial_Units__c
         string Unit_Label_Plural__c
         picklist Timesheet_Interface__c
         picklist Timesheet_Secondary_Interface__c
+        string Default_Pay_Rate_Field_Reference__c
+        string Default_Bill_Rate_Field_Reference__c
+        text Filter_Criteria__c
         rollup Number_Of_Details__c
     }
 
     Rate_Card_Template_Detail__c {
-        master_detail Rate_Card_Template__c
+        masterdetail Rate_Card_Template__c
         number Sequence__c
         time Start_Time__c
         time End_Time__c
-        string Pay_Type__c
-        string Bill_Type__c
+        picklist Pay_Type__c
+        picklist Bill_Type__c
         currency Fixed_Pay_Rate__c
         currency Fixed_Bill_Rate__c
         currency Pay_Rate_Low__c
@@ -63,8 +68,9 @@ erDiagram
     Candidate_Rate_Card__c {
         date Start_Date__c
         date End_Date__c
-        string Status__c
+        string Status__c "FORMULA: Active/Expired/Upcoming/Void"
         boolean Void__c
+        boolean Manual_Override__c
         string Rate_Card_Type__c
         string Rate_Card_Detail_Type__c
         lookup Rate_Card_Template__c
@@ -79,7 +85,7 @@ erDiagram
     }
 
     Candidate_Rate_Card_Detail__c {
-        master_detail Candidate_Rate_Card__c
+        masterdetail Candidate_Rate_Card__c
         lookup Rate_Card_Template_Detail__c
         number Sequence__c
         time Start_Time__c
@@ -95,7 +101,7 @@ erDiagram
     }
 
     AST_Rate_Card_Template_Filter__c {
-        master_detail Rate_Card_Template__c
+        lookup Rate_Card_Template__c
         number Sequence__c
         string Object_Name__c
         string Target_Field__c
@@ -117,18 +123,24 @@ erDiagram
         lookup Candidate_Rate_Card_Detail__c
     }
 
+    Alternative_Time__c {
+        lookup Candidate_Rate_Card__c
+        lookup Candidate_Rate_Card_Detail__c
+    }
+
     %% Relationships
-    Rate_Card_Template__c ||--o{ Rate_Card_Template_Detail__c : "contains details"
-    Rate_Card_Template__c ||--o{ AST_Rate_Card_Template_Filter__c : "has filters"
-    Rate_Card_Template__c ||--o{ Candidate_Rate_Card__c : "generates"
-    Rate_Card_Template__c }o--|| Account : "belongs to"
-    
-    Candidate_Rate_Card__c ||--o{ Candidate_Rate_Card_Detail__c : "contains details"
-    Candidate_Rate_Card__c ||--o{ Timesheet__c : "used by"
-    Candidate_Rate_Card__c ||--o{ Time_Entry__c : "applied to"
-    
-    Candidate_Rate_Card_Detail__c }o--|| Rate_Card_Template_Detail__c : "based on"
-    Time_Entry__c }o--|| Candidate_Rate_Card_Detail__c : "uses specific detail"
+    Rate_Card_Template__c ||--o{ Rate_Card_Template_Detail__c : "Rate_Card_Template__c (Master-Detail)"
+    Rate_Card_Template__c ||--o{ AST_Rate_Card_Template_Filter__c : "Rate_Card_Template__c (Lookup, NOT Master-Detail)"
+    Rate_Card_Template__c }o--o{ Candidate_Rate_Card__c : "Rate_Card_Template__c (Lookup)"
+    Rate_Card_Template__c }o--o| Account : "Account__c (Lookup)"
+
+    Candidate_Rate_Card__c ||--o{ Candidate_Rate_Card_Detail__c : "Candidate_Rate_Card__c (Master-Detail)"
+    Candidate_Rate_Card__c }o--o{ Timesheet__c : "referenced by Timesheet__c.Candidate_Rate_Card__c"
+    Candidate_Rate_Card__c }o--o{ Time_Entry__c : "referenced by Time_Entry__c.Candidate_Rate_Card__c"
+    Candidate_Rate_Card__c }o--o{ Alternative_Time__c : "referenced by Alternative_Time__c.Candidate_Rate_Card__c"
+
+    Candidate_Rate_Card_Detail__c }o--o| Rate_Card_Template_Detail__c : "Rate_Card_Template_Detail__c (Lookup)"
+    Time_Entry__c }o--o| Candidate_Rate_Card_Detail__c : "Candidate_Rate_Card_Detail__c (Lookup)"
 
     %% Color coding
     classDef templateObject fill:#4A90E2,stroke:#333,stroke-width:2px,color:#fff
@@ -139,59 +151,48 @@ erDiagram
     class Rate_Card_Template__c,Rate_Card_Template_Detail__c templateObject
     class Candidate_Rate_Card__c,Candidate_Rate_Card_Detail__c candidateObject
     class AST_Rate_Card_Template_Filter__c filterObject
-    class Account,Timesheet__c,Time_Entry__c externalObject
+    class Account,Timesheet__c,Time_Entry__c,Alternative_Time__c externalObject
 ```
+
+## Important Correction: `Candidate_Rate_Card__c` Has No Direct Candidate Lookup
+
+`Candidate_Rate_Card__c` has **no lookup field to `Contact`**. The candidate association is established indirectly: `Timesheet__c.Candidate__c` (the candidate) and `Timesheet__c.Candidate_Rate_Card__c` (the rate card) both point from the same Timesheet record. There is no way to query "all rate cards for Candidate X" directly off `Candidate_Rate_Card__c` without joining through `Timesheet__c` or `Time_Entry__c`/`Alternative_Time__c`.
 
 ## Object Descriptions
 
 ### 1. Rate_Card_Template__c (Template Object)
-The master template object that defines standardized rate card structures. Templates serve as blueprints for creating candidate-specific rate cards and can be assigned to accounts with specific criteria.
+Master template defining standardized rate structures per `Account__c` (Lookup with `deleteConstraint: SetNull` — if the Account is deleted, the template survives with `Account__c` cleared rather than being cascade-deleted).
 
 **Key Characteristics:**
-- Defines pay and bill rate structures (fixed, range-based, or markup-based)
-- Supports multiple rate calculation types through Pay_Type__c and Bill_Type__c
-- Handles overtime and double-time markup configurations
-- Can be set as default for automatic assignment
-- Supports priority-based selection when multiple templates match
+- Pay/Bill calculation types: `Standard`, `Range`, `Fixed`, `Markup` (Bill Type adds `Non-Billable`) — shared `Pay_Type` / `Bill_Type` global value sets
+- `Rate_Card_Type__c`: `Hourly`, `Daily`, `Unit`, `Location`, `Shift`, `Time Based`
+- `AST_Rate_Card_Detail_Type__c`: `Hourly`, `Daily`, `Unit`
+- `Timesheet_Interface__c` / `Timesheet_Secondary_Interface__c` control which time-entry UI (Start/End, Time In/Out, Total Hours, Unit, Daily, Start/End Flexible, Total Hours Flexible) is presented
+- `Filter_Criteria__c` (Long Text) stores a human-readable/compiled summary of the related `AST_Rate_Card_Template_Filter__c` records
+- `Number_Of_Details__c` rollup counts child `Rate_Card_Template_Detail__c` records
 
-### 2. Rate_Card_Template_Detail__c (Template Object)
-Time-based rate variations within a template. Allows different rates for different times of day or shifts.
+### 2. Rate_Card_Template_Detail__c (Master-Detail child of Rate_Card_Template__c)
+Time-window-based rate variations.
 
 **Key Characteristics:**
-- Master-detail relationship with Rate_Card_Template__c
-- Defines time windows with Start_Time__c and End_Time__c
-- Each detail can have its own rate structure
-- Supports field references for dynamic rate calculation
-- Sequenced for proper time coverage
+- `Start_Time__c` / `End_Time__c` define the applicable window
+- Mirrors the parent's Pay/Bill type structure for that specific window
+- 9 validation rules enforce rate integrity (see Validation Rules section below)
 
 ### 3. Candidate_Rate_Card__c (Candidate Object)
-Candidate-specific instances of rate cards, created from templates but customizable per placement.
+Candidate-specific instance, generated from (via lookup to) a template.
 
 **Key Characteristics:**
-- Date-effective with Start_Date__c and End_Date__c
-- Maintains all rate types: Regular, Overtime (OT), and Double Time (DT)
-- Tracks status and can be voided
-- Links back to originating template
-- Used by timesheets for rate calculations
+- `Status__c` is a **formula field**: `IF(Void__c, "Void", IF(Start_Date__c <= TODAY() && (End_Date__c >= TODAY() || blank), "Active", IF(End_Date__c < TODAY(), "Expired", "Upcoming")))` — it cannot be set directly by a user or Apex DML
+- `Manual_Override__c` (Checkbox) allows bypassing template-driven defaults
+- No direct Contact/candidate lookup (see correction above)
+- Links back to source `Rate_Card_Template__c` via lookup
 
-### 4. Candidate_Rate_Card_Detail__c (Candidate Object)
-Candidate-specific rate card details for time-based variations.
+### 4. Candidate_Rate_Card_Detail__c (Master-Detail child of Candidate_Rate_Card__c)
+Candidate-specific time-window rate variations, mirroring `Rate_Card_Template_Detail__c` via a lookup reference to the originating template detail.
 
-**Key Characteristics:**
-- Master-detail relationship with Candidate_Rate_Card__c
-- Mirrors structure of template details but with candidate-specific rates
-- Links to both parent rate card and template detail
-- Used by time entries for precise rate determination
-
-### 5. AST_Rate_Card_Template_Filter__c (Filter Object)
-Dynamic filter criteria for automatic template assignment based on business rules.
-
-**Key Characteristics:**
-- Master-detail relationship with Rate_Card_Template__c
-- Supports multiple operators (equals, not equals, less than, greater than, contains)
-- Can filter on any field from the target object
-- Sequenced for complex logic construction
-- Enables sophisticated assignment rules
+### 5. AST_Rate_Card_Template_Filter__c (Filter Object — Lookup, not Master-Detail)
+Dynamic filter criteria for automatic template assignment, evaluated against a target object/field/operator/value. **Relationship to `Rate_Card_Template__c` is a Lookup** (sharing model `ReadWrite`, confirming it is independently owned, not cascade-deleted with its template).
 
 ## Field Details
 
@@ -202,17 +203,15 @@ Dynamic filter criteria for automatic template assignment based on business rule
 | Account__c | Lookup | Account this template belongs to |
 | Active__c | Checkbox | Whether template is currently active |
 | Is_Default__c | Checkbox | Default template for the account |
-| Rate_Card_Type__c | Picklist | Type of rate card (Hourly, Daily, Unit-based) |
-| AST_Rate_Card_Detail_Type__c | Picklist | Detail type (None, Location & Shift, Time-based) |
-| Pay_Type__c | Picklist | Pay calculation method (Fixed, Range, Markup) |
-| Bill_Type__c | Picklist | Bill calculation method (Fixed, Range, Markup) |
-| Fixed_Pay_Rate__c | Currency | Fixed pay rate when Pay_Type = Fixed |
-| Fixed_Bill_Rate__c | Currency | Fixed bill rate when Bill_Type = Fixed |
-| Pay_Rate_Low__c | Currency | Minimum pay rate for range |
-| Pay_Rate_High__c | Currency | Maximum pay rate for range |
-| Markup__c | Percent | Markup percentage over pay rate |
+| Rate_Card_Type__c | Picklist | `Hourly`, `Daily`, `Unit`, `Location`, `Shift`, `Time Based` |
+| Pay_Type__c / Bill_Type__c | Picklist (Global Value Set) | `Standard`/`Range`/`Fixed`/`Markup` (+`Non-Billable` for Bill) |
+| Fixed_Pay_Rate__c / Fixed_Bill_Rate__c | Currency | Used when type = `Fixed` |
+| Pay_Rate_Low__c / Pay_Rate_High__c / Bill_Rate_Low__c / Bill_Rate_High__c | Currency | Used when type = `Range` |
+| Markup__c | Percent | Used when type = `Markup` |
 | Burden__c | Percent | Burden percentage for total cost calculation |
-| Priority__c | Number | Priority for template selection |
+| Priority__c | Number | Priority for template selection when multiple match |
+| Filter_Criteria__c | Long Text | Summary of filter logic |
+| Number_Of_Details__c | Rollup (Summary) | Count of child detail records |
 
 ### Rate_Card_Template_Detail__c Key Fields
 
@@ -220,114 +219,80 @@ Dynamic filter criteria for automatic template assignment based on business rule
 |-------|------|-------------|
 | Rate_Card_Template__c | Master-Detail | Parent template |
 | Sequence__c | Number | Order of detail records |
-| Start_Time__c | Time | Start time for this rate |
-| End_Time__c | Time | End time for this rate |
-| Pay_Type__c | Picklist | Pay calculation for this time period |
-| Bill_Type__c | Picklist | Bill calculation for this time period |
-| Fixed_Pay_Rate__c | Currency | Fixed pay rate for this period |
-| Fixed_Bill_Rate__c | Currency | Fixed bill rate for this period |
-| Markup__c | Percent | Markup for this time period |
+| Start_Time__c / End_Time__c | Time | Window for this rate |
+| Pay_Type__c / Bill_Type__c | Picklist | Calculation method for this window |
+| Default_Pay_Rate_Field_Reference__c / Default_Bill_Rate_Field_Reference__c | Text | Field-reference strings used for dynamic rate resolution |
 
 ### Candidate_Rate_Card__c Key Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Start_Date__c | Date | Effective start date |
-| End_Date__c | Date | Effective end date |
-| Status__c | Picklist | Current status (Active, Inactive, Expired) |
+| Start_Date__c / End_Date__c | Date | Effective window |
+| Status__c | Formula (Text) | `Active` / `Expired` / `Upcoming` / `Void` — derived, not editable |
+| Void__c | Checkbox | Drives the `Void` formula branch |
+| Manual_Override__c | Checkbox | Bypasses template-derived rate values |
 | Rate_Card_Template__c | Lookup | Source template |
-| Pay_Rate__c | Currency | Regular pay rate |
-| Bill_Rate__c | Currency | Regular bill rate |
-| OT_Pay_Rate__c | Currency | Overtime pay rate |
-| OT_Bill_Rate__c | Currency | Overtime bill rate |
-| DT_Pay_Rate__c | Currency | Double-time pay rate |
-| DT_Bill_Rate__c | Currency | Double-time bill rate |
-| Burden__c | Percent | Burden percentage |
-| Burden_Amount__c | Currency | Calculated burden amount |
+| Pay_Rate__c / Bill_Rate__c | Currency | Regular rates |
+| OT_Pay_Rate__c / OT_Bill_Rate__c | Currency | Overtime rates |
+| DT_Pay_Rate__c / DT_Bill_Rate__c | Currency | Double-time rates |
+| Burden__c / Burden_Amount__c | Percent / Currency | Burden calculation |
 
 ### AST_Rate_Card_Template_Filter__c Key Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Rate_Card_Template__c | Master-Detail | Parent template |
+| Rate_Card_Template__c | Lookup (not Master-Detail) | Associated template |
 | Sequence__c | Number | Filter evaluation order |
 | Object_Name__c | Text | Target object API name |
 | Target_Field__c | Text | Field to evaluate |
 | Operator__c | Picklist | Comparison operator |
 | Value__c | Text | Value to compare against |
 
+## Validation Rules (verified — 21 of the package's 22 total live in this domain)
+
+### Rate_Card_Template__c (9 rules)
+`Bill_Rate_Low_Greater_Than_High`, `Check_for_Filter_Criteria`, `Detail_Type_Daily_Interface_Unit`, `Detail_Type_Hourly_Interface_Unit_Daily`, `Detail_Type_Unit_Interface_Not_Unit`, `Fixed_Pay_Rate_Greater_Fixed_Bill_Rate`, `Low_Bill_Less_Than_Fixed_Pay`, `Markup_Less_Than_Zero`, `Pay_High_Greater_Than_Fixed_Bill_Rate`, `Pay_Rate_Low_Greater_Than_High`, `Pay_Rate_and_Bill_Rate_less_than_Zero`, `Range_Pay_Rates_Greater_Range_Bill_Rates`
+
+### Rate_Card_Template_Detail__c (9 rules)
+`Bill_Rate_Low_Greater_Than_High`, `End_Time_Cannot_Be_Before_Start_Time`, `Fixed_Pay_Rate_Greater_Fixed_Bill_Rate`, `Low_Bill_Less_Than_Fixed_Pay`, `Markup_Less_Than_Zero`, `Pay_High_Greater_Than_Fixed_Bill_Rate`, `Pay_Rate_Low_Greater_Than_High`, `Pay_Rate_and_Bill_Rate_less_than_Zero`, `Range_Pay_Rates_Greater_Range_Bill_Rates`
+
+These enforce rate integrity (low ≤ high, pay ≤ bill where applicable, markup ≥ 0, end time after start time, and consistency between `AST_Rate_Card_Detail_Type__c` and the selected Timesheet Interface). No validation rules exist on `Candidate_Rate_Card__c`, `Candidate_Rate_Card_Detail__c`, or `AST_Rate_Card_Template_Filter__c`.
+
 ## Relationship Explanations
 
-### 1. Template to Template Detail (1:M - Master-Detail)
-- Templates can have multiple time-based detail records
-- Details define rate variations throughout the day
-- Deletion of template cascades to all details
+### 1. Template to Template Detail (1:M — Master-Detail)
+Confirmed Master-Detail; deletion of a template cascades to its details.
 
-### 2. Template to Filter Criteria (1:M - Master-Detail)
-- Templates can have multiple filter criteria
-- Filters determine automatic assignment eligibility
-- Complex logic can be built using multiple filters
+### 2. Template to Filter Criteria (1:M — Lookup, not Master-Detail)
+`AST_Rate_Card_Template_Filter__c` records are independently owned (`ReadWrite` sharing) and are **not** deleted automatically if the parent template is deleted — this is a correction from prior documentation, which incorrectly described this as Master-Detail.
 
-### 3. Template to Candidate Rate Card (1:M - Lookup)
-- Templates generate multiple candidate-specific rate cards
-- Candidate rate cards maintain reference to source template
-- Allows tracking of which template was used
+### 3. Template to Candidate Rate Card (1:M — Lookup)
+Candidate rate cards retain a lookup back to their source template; no cascade delete.
 
-### 4. Candidate Rate Card to Details (1:M - Master-Detail)
-- Mirrors the template/detail structure at candidate level
-- Provides candidate-specific rate variations
-- Maintains link to original template detail
+### 4. Candidate Rate Card to Details (1:M — Master-Detail)
+Confirmed Master-Detail, mirroring the template/detail structure.
 
-### 5. Rate Card Usage Relationships
-- Timesheets reference the active candidate rate card
-- Time entries can reference specific rate card details
-- Enables precise rate calculation based on time worked
+### 5. Rate Card Usage
+`Timesheet__c`, `Time_Entry__c`, and `Alternative_Time__c` all reference `Candidate_Rate_Card__c` by lookup; `Time_Entry__c` and `Alternative_Time__c` additionally reference `Candidate_Rate_Card_Detail__c` for window-specific rates.
 
 ## Business Rules and Logic
 
 ### 1. Rate Type Hierarchies
-- **Fixed**: Single rate applies regardless of hours
-- **Range**: Rate must fall within defined min/max bounds
+- **Standard/Fixed**: Single rate regardless of hours
+- **Range**: Rate must fall within defined min/max bounds (enforced by validation rules)
 - **Markup**: Bill rate calculated as pay rate + markup percentage
+- **Non-Billable** (Bill Type only): No billing occurs for this rate
 
-### 2. Detail Type Classifications
-- **None**: Single rate structure for all hours
-- **Location & Shift**: Different rates by location/shift
-- **Time-based**: Different rates by time of day
+### 2. Template Assignment Logic
+1. `AST_RateCardTemplateFilterController` / `AST_BooleanEvaluation` evaluate `AST_Rate_Card_Template_Filter__c` criteria against placement/job data
+2. Multiple templates may match — `Priority__c` determines selection
+3. `Is_Default__c` template used if no filters match
+4. `Manual_Override__c` on the resulting `Candidate_Rate_Card__c` allows bypassing the computed rate
 
-### 3. Template Assignment Logic
-1. System evaluates filter criteria against placement/job data
-2. Multiple templates may match - priority determines selection
-3. Default template used if no filters match
-4. Manual override always possible
+### 3. Status Management
+`Candidate_Rate_Card__c.Status__c` is always computed — administrators cannot directly set a rate card to "Active"; they can only set `Start_Date__c`/`End_Date__c`/`Void__c`, and the formula derives the display status.
 
-### 4. Rate Calculation Flow
-1. Time entry created with date/time
-2. System identifies applicable candidate rate card
-3. If time-based details exist, finds matching detail by time
-4. Applies regular/OT/DT rules based on hours worked
-5. Calculates pay and bill amounts
+### 4. Complex Rate Card Management Gate
+All of the dynamic filter/priority/multi-tier behavior above is only active when `AST_Generic_Setting__mdt.Enable_Complex_Rate_Card_Management__c = true`.
 
-### 5. Validation Rules
-- Pay rates cannot exceed bill rates (for range types)
-- Markup must be greater than zero
-- Time-based details cannot overlap
-- End time must be after start time
-- Only one default template per account
-
-### 6. Status Management
-- Templates can be activated/deactivated
-- Candidate rate cards track their own status
-- Voided rate cards maintain audit trail
-- Date effectiveness ensures proper historical tracking
-
-## Complex Rate Card Management
-
-When Complex Rate Card Management is enabled (via AST_Generic_Setting__mdt.Enable_Complex_Rate_Card_Management__c):
-- Supports sophisticated multi-tier rate structures
-- Enables time-based rate variations
-- Allows location and shift differentials
-- Provides dynamic assignment based on business rules
-- Maintains complete audit trail of rate changes
-
-This comprehensive rate card management system provides the flexibility needed for complex staffing scenarios while maintaining data integrity and supporting accurate financial calculations throughout the time and attendance process.
+This rate card management system provides flexible pay/bill structuring for staffing scenarios, with rate integrity enforced primarily through validation rules on the Template objects rather than through Apex-level business logic on the Candidate-level records.
