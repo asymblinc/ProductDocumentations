@@ -2,7 +2,7 @@
 
 Welcome to the comprehensive documentation for the **ASM product group** - three separate Salesforce repositories that together form a layered search, AI-search, and prompt/agent stack on top of ASYMBL-ATS.
 
-> **Source of truth**: This documentation reflects all three repos' `master` branches as of 2026-10-30. It supersedes a single flat `ASM/` folder that presented all three repos as one undifferentiated product — investigation confirmed the prior content was entirely and exclusively about `ASM/asm`, with `asymbl-intelligence` and `AINTL-Unmanaged` having zero dedicated documentation anywhere in this repository. See "Why this was restructured" below.
+> **Source of truth**: This documentation reflects all three repos' `master` branches, refreshed 2026-11-04 (`asm` and `asymbl-intelligence` as of 2026-10-30; `AINTL-Unmanaged` as of 2026-11-04, after its `packaging` branch was merged into `master` via PR #3). It supersedes a single flat `ASM/` folder that presented all three repos as one undifferentiated product — investigation confirmed the prior content was entirely and exclusively about `ASM/asm`, with `asymbl-intelligence` and `AINTL-Unmanaged` having zero dedicated documentation anywhere in this repository. See "Why this was restructured" below.
 
 ## 📋 Table of Contents
 
@@ -32,14 +32,14 @@ The "ASM" product group spans **three separate Salesforce repositories**, all sh
 | Metric | `asm` | `asymbl-intelligence` | `AINTL-Unmanaged` |
 |--------|-------|------------------------|---------------------|
 | **Package type** | Managed 2GP | Managed 2GP | Unmanaged |
-| **Branch read** | `master` (HEAD `31f9b46` @ 2026-08-09) | `master` (HEAD `bcef0b5` @ 2026-07-29) | `master` (HEAD `373f805` @ 2025-07-02) — **effectively empty, see caveat below** |
-| **Total package.xml components** | 864 | — (small, untracked at this granularity) | 2 (on `packaging`, not `master`) |
+| **Branch read** | `master` (HEAD `31f9b46` @ 2026-08-09) | `master` (HEAD `bcef0b5` @ 2026-07-29) | `master` (HEAD `fc09cb4` @ 2026-11-04, after `packaging` merged in) |
+| **Total package.xml components** | 864 | — (small, untracked at this granularity) | 1 declared (`NLP_to_Daxtra_Request`; `Search_Query_Analyzer` exists on disk but is missing from the manifest — see caveat below) |
 | **Apex Classes** | 103 declared (~53 unique) | 14 | 0 |
 | **Lightning Web Components** | 51 declared / 53 on disk | 3 | 0 |
 | **Custom Objects** | 9 (4 business + 5 `__mdt`) | 1 `__mdt` type | 0 |
 | **Custom Labels** | 337 declared / 372 on disk | — | 0 |
 | **Custom Metadata Records** | 242 | 1 type, 1 record | 0 |
-| **GenAI Prompt Templates** | 0 | 0 (consumes AINTL-Unmanaged's by name) | 2 (on `packaging`) |
+| **GenAI Prompt Templates** | 0 | 0 (consumes AINTL-Unmanaged's by name) | 2 |
 | **Declared dependency** | ASYMBL-ATS only | ASYMBL-ATS + Asymbl Search & Match | None declared |
 
 See each repo's own README (linked below) for the full, caveated breakdown including manifest/force-app drift findings.
@@ -67,7 +67,7 @@ See each repo's own README (linked below) for the full, caveated breakdown inclu
 
 | Document | Description |
 |-------------|-------------|
-| [`README.md`](AINTL-Unmanaged/README.md) | Documents both the empty `master` branch and the real `packaging`-branch content, clearly labeled |
+| [`README.md`](AINTL-Unmanaged/README.md) | Documents the 2 GenAI prompt templates now on `master` (merged from `packaging` 2026-11-04), plus the carried-forward manifest-drift and doubled-directory-path findings |
 
 ## 📖 Core Documentation
 
@@ -92,7 +92,7 @@ See each repo's own README (linked below) for the full, caveated breakdown inclu
 - 14 Apex classes and 3 LWCs implementing natural-language search on top of `asm`'s search service
 - Dynamic permission sets (`ASYMBL_AINTL_User`, `ASYMBL_AINTL_Admin`) created programmatically, not shipped as static metadata
 
-### 3. Prompt/Agent Content (`AINTL-Unmanaged`, on `packaging`)
+### 3. Prompt/Agent Content (`AINTL-Unmanaged`)
 - **NLP_to_Daxtra_Request**: Converts natural-language search text into a Daxtra-compatible boolean query
 - **Search_Query_Analyzer**: Parses a natural-language query into 6 structured categories (job title, skills, location, experience, education, availability)
 
@@ -111,16 +111,23 @@ ASYMBL-ATS (bpats core)
 
 Verified directly from each repo's `sfdx-project.json` on `master`: `asm` depends only on `ASYMBL-ATS`; `asymbl-intelligence` depends on both `ASYMBL-ATS` and `Asymbl Search & Match`, and additionally grants access to the `EinsteinGPTPromptTemplateManager` permission set; `AINTL-Unmanaged` declares no dependency block at all, and ships as an **unmanaged** package via its own GitHub Action, unlike its two managed-2GP siblings. A change low in this chain (ATS core) can ripple upward through all three ASM repos; the reverse is not true.
 
-### ⚠ `AINTL-Unmanaged`'s `master` branch is effectively empty
+### ✅ `AINTL-Unmanaged`'s `master` branch is now up to date (as of 2026-11-04)
 
-As of 2026-10-30, `ASM/AINTL-Unmanaged`'s `master` branch contains **only a one-line `README.md`** — no `force-app`, no `manifest/package.xml`, no prompt templates, no CI workflows. All real content (the two GenAI prompt templates, `sfdx-project.json`, the unmanaged-package GitHub Action) exists only on the `packaging` branch and was **never merged into `master`**. This documentation set was built to the letter of the instruction to read `master` everywhere; the [`AINTL-Unmanaged/README.md`](AINTL-Unmanaged/README.md) documents both branches explicitly and clearly labeled. If you need the real AINTL-Unmanaged documentation, treat the `packaging`-branch content there as the operative reference, and flag to the repo owner that `master` is stale relative to `packaging`.
+Previously, `ASM/AINTL-Unmanaged`'s `master` branch contained only a one-line `README.md` while all
+real content (the two GenAI prompt templates, `sfdx-project.json`, the unmanaged-package GitHub
+Action) lived only on `packaging`. On 2026-11-04, `packaging` was merged into `master` via PR #3
+(`95b51da..fc09cb4`), so `master` now carries the repo's full real content and the two branches are
+reconciled. The [`AINTL-Unmanaged/README.md`](AINTL-Unmanaged/README.md) documents `master` directly
+going forward; no branch-discrepancy caveat remains for this repo. Two smaller findings are still
+open and documented there: a doubled `genAiPromptTemplates/.../genAiPromptTemplates/` directory path,
+and `Search_Query_Analyzer` missing from `manifest/package.xml` despite existing on disk.
 
 ## 🚀 Getting Started
 
 ### For Developers
 1. If extending candidate search/matching or resume parsing, start in [`asm/ASM_Package_Documentation.md`](asm/ASM_Package_Documentation.md)
 2. If extending AI/natural-language search, start in [`asymbl-intelligence/AINTL_Package_Documentation.md`](asymbl-intelligence/AINTL_Package_Documentation.md) — it delegates core search logic into `asm`, so read that repo's docs first
-3. If authoring or editing prompt templates, read [`AINTL-Unmanaged/README.md`](AINTL-Unmanaged/README.md) in full — note the `master`/`packaging` caveat before making any branch assumptions
+3. If authoring or editing prompt templates, read [`AINTL-Unmanaged/README.md`](AINTL-Unmanaged/README.md) in full for the two templates' real input/output contracts
 
 ### For Business Users
 1. Begin with [`asm/ASM_Integration_Architecture.md`](asm/ASM_Integration_Architecture.md) for the resume-parsing workflow
@@ -129,7 +136,7 @@ As of 2026-10-30, `ASM/AINTL-Unmanaged`'s `master` branch contains **only a one-
 ### For System Administrators
 1. Study [`asm/ASM_UI_Components_Architecture.md`](asm/ASM_UI_Components_Architecture.md) for UI/tab/layout configuration
 2. Review the dynamic permission-set provisioning notes in [`asymbl-intelligence/AINTL_Package_Documentation.md`](asymbl-intelligence/AINTL_Package_Documentation.md)
-3. Check this file's [Dependency Chain & Critical Caveat](#dependency-chain--critical-caveat) section before relying on `AINTL-Unmanaged`'s `master` branch for anything
+3. See this file's [Dependency Chain & Critical Caveat](#dependency-chain--critical-caveat) section for `AINTL-Unmanaged`'s `master`/`packaging` merge history and remaining open findings
 
 ## 🧭 Quick Navigation
 
@@ -163,5 +170,6 @@ The previous flat `ASM/` folder (four files: `README.md`, `ASM_Package_Documenta
 - Component counts and relationships are verified directly against each repo's `manifest/package.xml` and `force-app/main/default` on `master`
 - Cross-references between documents provide complete navigation paths across all three repos
 - This revision (2026-10-30) restructured one flat folder into three repo-scoped subfolders and wrote first-ever dedicated documentation for `asymbl-intelligence` and `AINTL-Unmanaged` — see each subfolder's own documentation notes for repo-specific verification detail
+- Follow-up (2026-11-04): `AINTL-Unmanaged`'s `master`/`packaging` branch discrepancy was resolved upstream (PR #3 merged `packaging` into `master`); this file and `AINTL-Unmanaged/README.md` were updated to reflect `master` as the current, reconciled source of truth
 
 For questions or contributions to this documentation, please refer to the main repository structure and contribution guidelines.
