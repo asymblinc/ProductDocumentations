@@ -67,8 +67,7 @@ The original, most mature documentation set in this group (first written ~2025-0
 against `master` as of 2026-08-09). Covers: 53 LWC components, 103 ApexClass package.xml members
 (~53 unique classes incl. tests), 9 custom objects (4 business objects + 5 `__mdt` config types),
 242 CustomMetadata records, Daxtra/RChilli resume-parsing integration architecture, and UI
-components (Quick Actions, Tabs, Layouts). See its own `README.md`... actually this subfolder has no
-separate README — start at [`ASM_Package_Documentation.md`](asm/ASM_Package_Documentation.md).
+components (Quick Actions, Tabs, Layouts). Start at its [`README.md`](asm/README.md).
 
 ### [`asymbl-intelligence/`](asymbl-intelligence/) — Asymbl Intelligence (AINTL)
 New documentation, written from scratch for this restructuring (no prior docs existed for this repo
